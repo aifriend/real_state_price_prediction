@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "real-state-price-prediction"
+version = "0.1.0"
+description = "Real state rental price prediction"
+authors = ["Jose Lopez <33095863+aifriend@users.noreply.github.com>"]
+license = "MIT"
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.10"
+click = "^8.1.7"
+sphinx = "^7.3.7"
+coverage = "^7.5.0"
+flake8 = "^7.0.0"
+python-dotenv = "^1.0.1"
+poetry = "^1.8.2"
+pandas = "^2.2.2"
+matplotlib = "^3.8.4"
+seaborn = "^0.13.2"
+scikit-learn = "^1.4.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
