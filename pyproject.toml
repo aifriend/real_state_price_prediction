@@ -19,6 +19,15 @@ pandas = "^2.2.2"
 matplotlib = "^3.8.4"
 seaborn = "^0.13.2"
 scikit-learn = "^1.4.2"
+pip = "^24.0"
+emoji = "^2.11.1"
+contractions = "^0.1.73"
+spacy = "^3.7.4"
+pyspellchecker = "^0.8.1"
+pandas-parallel-apply = "^2.2"
+xgboost = "^2.0.3"
+geopandas = "^0.14.4"
+folium = "^0.16.0"
 
 
 [build-system]

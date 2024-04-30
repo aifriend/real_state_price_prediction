@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
-import click
 import logging
 from pathlib import Path
+
+import click
 from dotenv import find_dotenv, load_dotenv
+
+from src.calendar_process import process_calendar
+from src.listing_process import process_merged_listings
 
 
 @click.command()
@@ -14,6 +18,9 @@ def main(input_filepath, output_filepath):
     """
     logger = logging.getLogger(__name__)
     logger.info('making final data set from raw data')
+
+    process_merged_listings()
+    process_calendar()
 
 
 if __name__ == '__main__':
