@@ -1,13 +1,20 @@
 from pathlib import Path
 
+import folium
+import geopandas as gpd
+import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 from scipy import stats
 from scipy.stats import f_oneway
+from sklearn.manifold import TSNE
+from sklearn.mixture import GaussianMixture
 from sklearn.preprocessing import LabelEncoder
 
-from src.listing_process import process_merged_listings
+from src.listing_pipeline import process_full_listings
+from src.review_pipeline import get_reviews_desc
+from src.service.EmbeddingService import EmbeddingService
 
 
 class EDA:
@@ -18,13 +25,7 @@ class EDA:
     """
 
     @staticmethod
-    def process():
-        """
-        I explored the data to check if there are trends between
-        the explanatory variables and the target variable.
-        """
-        df = process_merged_listings(1)
-
+    def feature_correlation_analysis(df):
         """
         visualizing the correlation of the features
 
@@ -69,50 +70,14 @@ class EDA:
         c = pd.concat([numerical_columns], axis=1)
         plt.figure(figsize=(30, 12))
         plt.title("A heatmap showing correlation between the features")
-        sns.set(style="darkgrid")
         sns.heatmap(c.corr(), annot=True)
         plt.savefig(
             Path.cwd().parents[1].joinpath(
                 "reports/figures", "heatmap.png"))
         plt.show()
 
-        """
-        Analyze the distribution of rental prices
-
-        - The distribution of rental prices shows a right-skewed pattern, with a majority of listings having 
-        lower prices and a few high-priced outliers.
-        - The median price varies across different neighborhoods, indicating that location plays a significant role 
-        in determining rental prices.
-        """
-        plt.figure(figsize=(10, 6))
-        plt.title('Distribution of Rental Prices')
-        plt.xlabel('Price')
-        plt.ylabel('Count')
-        sns.set(style="darkgrid")
-        sns.histplot(data=df, x='price', kde=True)
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "rental_prices_distribution.png"))
-        plt.show()
-
-        """
-        Visualize the distribution of room types
-
-        - The most common room types in the temporary rental market are entire homes/apartments, followed by 
-        private rooms and shared rooms.
-        - This suggests that a significant portion of the market caters to travelers seeking private accommodations.
-        """
-        plt.figure(figsize=(8, 6))
-        plt.title('Distribution of Room Types')
-        plt.xlabel('Room Type')
-        plt.ylabel('Count')
-        sns.set(style="darkgrid")
-        sns.countplot(data=df, x='room_type')
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "room_types_distribution.png"))
-        plt.show()
-
+    @staticmethod
+    def neighborhood_analysis(df):
         """
         Analyze the relationship between price and neighborhood
         """
@@ -121,7 +86,6 @@ class EDA:
         plt.xlabel('Neighborhood')
         plt.ylabel('Price')
         plt.xticks(rotation=45)
-        sns.set(style="darkgrid")
         sns.boxplot(data=df, x='neighbourhood_group', y='price')
         plt.savefig(
             Path.cwd().parents[1].joinpath(
@@ -133,7 +97,6 @@ class EDA:
         plt.title('Price Distribution by Neighborhood')
         plt.xlabel('Neighborhood')
         plt.ylabel('Price')
-        sns.set(style="darkgrid")
         sns.violinplot(data=df, x='neighbourhood_group', y='price')
         plt.xticks(rotation=45)
         plt.savefig(
@@ -161,7 +124,6 @@ class EDA:
         # calculated_host_listings_count (0.17)
         plt.figure(figsize=(10, 8))
         plt.title('Correlation Heatmap')
-        sns.set(style="darkgrid")
         sns.heatmap(df[['price', 'minimum_nights', 'number_of_reviews', 'reviews_per_month',
                         'calculated_host_listings_count', 'availability_365']].corr(), annot=True, cmap='coolwarm')
         plt.savefig(
@@ -177,6 +139,259 @@ class EDA:
         print(top_neighborhoods)
 
         """
+        Visualize the distribution of listings by neighborhood
+
+        - The distribution of listings across neighborhoods is uneven, with some neighborhoods having 
+        a higher concentration of listings compared to others.
+        - This could be influenced by factors such as tourist attractions, accessibility, or local regulations.
+        """
+        plt.figure(figsize=(12, 8))
+        plt.title('Distribution of Listings by Neighborhood')
+        plt.xlabel('Neighborhood')
+        plt.ylabel('Count')
+        plt.xticks(rotation=45)
+        sns.countplot(data=df, x='neighbourhood_cleansed', order=df['neighbourhood_cleansed'].value_counts().index)
+        plt.savefig(
+            Path.cwd().parents[1].joinpath(
+                "reports/figures", "listings_by_neighborhood.png"))
+        plt.show()
+
+        """
+        Read the property data into a GeoDataFrame        
+        """
+        property_gdf = gpd.read_file(
+            Path.cwd().parents[1].joinpath(
+                "data/raw", "neighbourhoods.geojson"))
+        # Get the center coordinates of the property locations
+        center_lat = property_gdf.geometry.centroid.y.mean()
+        center_lon = property_gdf.geometry.centroid.x.mean()
+        # Create a Folium map centered on the mean coordinates
+        map_center = [center_lat, center_lon]
+        map_zoom = 12
+        folium_map = folium.Map(location=map_center, zoom_start=map_zoom)
+        # Add property locations as markers to the map
+        for idx, row in property_gdf.iterrows():
+            location = [row.geometry.centroid.y, row.geometry.centroid.x]
+            popup_text = (f"Property Neighbourhood Location: {row['neighbourhood']}<br>"
+                          f"Property Neighbourhood Area: {row['neighbourhood_group']}")
+            folium.Marker(location=location, popup=popup_text).add_to(folium_map)
+        # Save the map to an HTML file
+        folium_map.save(
+            Path.cwd().parents[1].joinpath(
+                "reports/figures", "property_map.html"))
+
+    @staticmethod
+    def review_analysis(listings_df, reviews_df):
+        """
+        Analyze the relationship between price and number of reviews
+
+        - There is a weak positive correlation between the price of a listing and the number
+        of reviews it has received.
+        - This suggests that higher-priced listings tend to receive more reviews, possibly due to
+        their popularity or quality.
+        """
+        plt.figure(figsize=(10, 6))
+        plt.title('Price vs. Number of Reviews (scatter)')
+        plt.xlabel('Number of Reviews')
+        plt.ylabel('Price')
+        sns.scatterplot(data=listings_df, x='number_of_reviews', y='price')
+        plt.savefig(
+            Path.cwd().parents[1].joinpath(
+                "reports/figures", "reviews_by_price.png"))
+        plt.show()
+
+        # Correlation analysis
+        # Correlation coefficient between price and number of reviews. The correlation coefficient ranges from -1 to 1,
+        # where values close to 1 indicate a strong positive correlation, values close to -1 indicate a strong negative
+        # correlation, and values close to 0 indicate a weak or no correlation.
+        correlation = listings_df['price'].corr(listings_df['number_of_reviews'])
+        print(f"Correlation between price and number of reviews: {correlation:.2f}")
+
+        # Price distribution by review categories
+        # Categorize the number of reviews into different bins (e.g., Low, Medium, High, Very High) and
+        # create a box plot to visualize the price distribution for each review category. This will help
+        # identify if there are any significant differences in price based on the number of reviews.
+        listings_df['review_category'] = pd.cut(
+            listings_df['number_of_reviews'], bins=[0, 10, 50, 100, float('inf')],
+            labels=['Low', 'Medium', 'High', 'Very High'])
+
+        plt.figure(figsize=(10, 6))
+        plt.title('Price Distribution by Review Categories')
+        plt.xlabel('Review Category')
+        plt.ylabel('Price')
+        sns.boxplot(data=listings_df, x='review_category', y='price')
+        plt.savefig(
+            Path.cwd().parents[1].joinpath(
+                "reports/figures", "review_category_by_price.png"))
+        plt.show()
+
+        # Statistical tests
+        # Perform ANOVA test to determine if there are significant differences in price among the different review
+        # categories. The ANOVA test compares the means of the price across the review categories. It indicates
+        # that there are significant differences in price among the review categories.
+        f_statistic, p_value = stats.f_oneway(
+            listings_df[listings_df['review_category'] == 'Low']['price'],
+            listings_df[listings_df['review_category'] == 'Medium']['price'],
+            listings_df[listings_df['review_category'] == 'High']['price'],
+            listings_df[listings_df['review_category'] == 'Very High']['price']
+        )
+        print(f"ANOVA test results:")
+        print(f"F-statistic: {f_statistic:.2f}")
+        print(f"p-value: {p_value:.4f}")
+
+        """
+        Relationship between room type and number of reviews
+
+        This relationship help us understand if certain room types (e.g., entire home/apt, private room, shared room) 
+        tend to receive more reviews than others. It can provide insights into the popularity and guest satisfaction 
+        associated with different room types.
+        """
+        plt.figure(figsize=(10, 6))
+        plt.title('Number of Reviews by Room Type')
+        plt.xlabel('Room Type')
+        plt.ylabel('Number of Reviews')
+        sns.boxplot(data=listings_df, x='room_type', y='number_of_reviews')
+        plt.savefig(
+            Path.cwd().parents[1].joinpath(
+                "reports/figures", "reviews_by_room_type.png"))
+        plt.show()
+
+        """
+        Relationship between host response rate and review scores
+
+        This analysis explores the potential correlation between a host's responsiveness 
+        (measured by the host response rate) and the overall review scores received by their listings. 
+        It can help identify if hosts who are more responsive tend to receive higher review scores, 
+        indicating better guest satisfaction
+        """
+        plt.figure(figsize=(10, 6))
+        plt.title('Review Scores vs. Host Response Rate')
+        plt.xlabel('Host Response Rate')
+        plt.ylabel('Review Scores Rating')
+        sns.scatterplot(data=listings_df, x='host_response_rate', y='review_scores_rating')
+        plt.savefig(
+            Path.cwd().parents[1].joinpath(
+                "reports/figures", "review_scores_vs_host_response_rate.png"))
+        plt.show()
+
+        """
+        Relationship between review length and number of reviews
+        """
+        reviews_df['review_length'] = reviews_df['comments'].apply(len)
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.set_title('Distribution of Review Lengths')
+        ax.set_xlabel('Review Length')
+        ax.set_ylabel('Count')
+        sns.histplot(data=reviews_df, x='review_length', ax=ax, kde=True)
+        plt.savefig(
+            Path.cwd().parents[1].joinpath(
+                "reports/figures", "reviews_length.png"))
+        plt.show()
+
+        """
+        Reviews per day
+        """
+        reviews_df['date'] = pd.to_datetime(reviews_df['date'])
+        daily_reviews = reviews_df.groupby(
+            reviews_df['date'].dt.date).size().reset_index(name='count')
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ax.set_title('Daily Number of Reviews')
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Number of Reviews')
+        plt.xticks(rotation=45)
+        sns.lineplot(data=daily_reviews, x='date', y='count', ax=ax)
+        plt.savefig(
+            Path.cwd().parents[1].joinpath(
+                "reports/figures", "reviews_per_day.png"))
+        plt.show()
+
+        """
+        Gaussian Mixture Model (GMM) algorithm. GMM is a probabilistic model that assumes
+        the data is generated from a mixture of a finite number of Gaussian distributions.
+        It can automatically determine the optimal number of clusters based on the data.
+        """
+        print("Transform text to an embedding vector space")
+        emb_service = EmbeddingService()
+        emb_reviews_df = emb_service.get_embeddings(reviews_df, 'comments')
+
+        print("Split the data into training and testing sets")
+        embeddings = np.array(emb_reviews_df['comments_emb'].tolist())
+
+        # Flatten the embeddings
+        flattened_embeddings = embeddings.reshape(embeddings.shape[0], -1)
+
+        # Perform dimensionality reduction using t-SNE
+        tsne = TSNE(n_components=2, perplexity=30, random_state=42)
+        reduced_embeddings = tsne.fit_transform(flattened_embeddings)
+
+        # Perform clustering using Gaussian Mixture Model
+        n_components_range = range(2, 11)  # Range of number of clusters to try
+        best_gmm = None
+        best_bic = np.inf
+        best_n_components = 0
+
+        for n_components in n_components_range:
+            gmm = GaussianMixture(n_components=n_components, covariance_type='full', random_state=42)
+            gmm.fit(reduced_embeddings)
+            bic = gmm.bic(reduced_embeddings)
+            if bic < best_bic:
+                best_bic = bic
+                best_gmm = gmm
+                best_n_components = n_components
+
+        # Assign cluster labels to each data point
+        cluster_labels = best_gmm.predict(reduced_embeddings)
+
+        # Visualize the clustering results in a 2D figure
+        plt.figure(figsize=(8, 6))
+        plt.scatter(reduced_embeddings[:, 0], reduced_embeddings[:, 1], c=cluster_labels, cmap='viridis')
+        plt.xlabel('t-SNE Dimension 1')
+        plt.ylabel('t-SNE Dimension 2')
+        plt.title(f'Clustering Results (Number of Clusters: {best_n_components})')
+        plt.colorbar(label='Cluster')
+        plt.savefig(
+            Path.cwd().parents[1].joinpath(
+                "reports/figures", "reviews_cluster.png"))
+        plt.show()
+
+    @staticmethod
+    def exploratory_analysis(df):
+        """
+        Analyze the distribution of rental prices
+
+        - The distribution of rental prices shows a right-skewed pattern, with a majority of listings having 
+        lower prices and a few high-priced outliers.
+        - The median price varies across different neighborhoods, indicating that location plays a significant role 
+        in determining rental prices.
+        """
+        plt.figure(figsize=(10, 6))
+        plt.title('Distribution of Rental Prices')
+        plt.xlabel('Price')
+        plt.ylabel('Count')
+        sns.histplot(data=df, x='price', kde=True)
+        plt.savefig(
+            Path.cwd().parents[1].joinpath(
+                "reports/figures", "rental_prices_distribution.png"))
+        plt.show()
+
+        """
+        Visualize the distribution of room types
+
+        - The most common room types in the temporary rental market are entire homes/apartments, followed by 
+        private rooms and shared rooms.
+        - This suggests that a significant portion of the market caters to travelers seeking private accommodations.
+        """
+        plt.figure(figsize=(8, 6))
+        plt.title('Distribution of Room Types')
+        plt.xlabel('Room Type')
+        plt.ylabel('Count')
+        sns.countplot(data=df, x='room_type')
+        plt.savefig(
+            Path.cwd().parents[1].joinpath(
+                "reports/figures", "room_types_distribution.png"))
+        plt.show()
+
+        """
         Visualize the distribution of listings by host
 
         - The distribution of listings by host reveals that a small number of hosts have a large number 
@@ -188,70 +403,11 @@ class EDA:
         plt.title('Distribution of Listings by Host')
         plt.xlabel('Number of Listings')
         plt.ylabel('Count')
-        sns.set(style="darkgrid")
         sns.histplot(data=df, x='calculated_host_listings_count', kde=True)
         plt.savefig(
             Path.cwd().parents[1].joinpath(
                 "reports/figures", "listings_distribution.png"))
         plt.show()
-
-        """
-        Analyze the relationship between price and number of reviews
-
-        - There is a weak positive correlation between the price of a listing and the number 
-        of reviews it has received.
-        - This suggests that higher-priced listings tend to receive more reviews, possibly due to 
-        their popularity or quality.
-        """
-        plt.figure(figsize=(10, 6))
-        plt.title('Price vs. Number of Reviews (scatter)')
-        plt.xlabel('Number of Reviews')
-        plt.ylabel('Price')
-        sns.set(style="darkgrid")
-        sns.scatterplot(data=df, x='number_of_reviews', y='price')
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "reviews_by_price.png"))
-        plt.show()
-
-        # Correlation analysis
-        # Correlation coefficient between price and number of reviews. The correlation coefficient ranges from -1 to 1,
-        # where values close to 1 indicate a strong positive correlation, values close to -1 indicate a strong negative
-        # correlation, and values close to 0 indicate a weak or no correlation.
-        correlation = df['price'].corr(df['number_of_reviews'])
-        print(f"Correlation between price and number of reviews: {correlation:.2f}")
-
-        # Price distribution by review categories
-        # Categorize the number of reviews into different bins (e.g., Low, Medium, High, Very High) and
-        # create a box plot to visualize the price distribution for each review category. This will help
-        # identify if there are any significant differences in price based on the number of reviews.
-        df['review_category'] = pd.cut(df['number_of_reviews'], bins=[0, 10, 50, 100, float('inf')],
-                                       labels=['Low', 'Medium', 'High', 'Very High'])
-
-        plt.figure(figsize=(10, 6))
-        plt.title('Price Distribution by Review Categories')
-        plt.xlabel('Review Category')
-        plt.ylabel('Price')
-        sns.set(style="darkgrid")
-        sns.boxplot(data=df, x='review_category', y='price')
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "review_category_by_price.png"))
-        plt.show()
-
-        # Statistical tests
-        # Perform ANOVA test to determine if there are significant differences in price among the different review
-        # categories. The ANOVA test compares the means of the price across the review categories. It indicates
-        # that there are significant differences in price among the review categories.
-        f_statistic, p_value = stats.f_oneway(
-            df[df['review_category'] == 'Low']['price'],
-            df[df['review_category'] == 'Medium']['price'],
-            df[df['review_category'] == 'High']['price'],
-            df[df['review_category'] == 'Very High']['price']
-        )
-        print(f"ANOVA test results:")
-        print(f"F-statistic: {f_statistic:.2f}")
-        print(f"p-value: {p_value:.4f}")
 
         """
         Visualize the availability of listings throughout the year
@@ -264,7 +420,6 @@ class EDA:
         plt.title('Distribution of Listing Availability')
         plt.xlabel('Number of Available Days')
         plt.ylabel('Count')
-        sns.set(style="darkgrid")
         sns.histplot(data=df, x='availability_365', kde=True)
         plt.savefig(
             Path.cwd().parents[1].joinpath(
@@ -290,31 +445,11 @@ class EDA:
         plt.xlabel('Property Type')
         plt.ylabel('Price')
         plt.xticks(rotation=45)
-        sns.set(style="darkgrid")
         sns.boxplot(data=df, x='property_type', y='price',
                     order=df.groupby('property_type')['price'].median().sort_values(ascending=False).index)
         plt.savefig(
             Path.cwd().parents[1].joinpath(
                 "reports/figures", "property_type_by_price.png"))
-        plt.show()
-
-        """
-        Visualize the distribution of listings by neighborhood
-
-        - The distribution of listings across neighborhoods is uneven, with some neighborhoods having 
-        a higher concentration of listings compared to others.
-        - This could be influenced by factors such as tourist attractions, accessibility, or local regulations.
-        """
-        plt.figure(figsize=(12, 8))
-        plt.title('Distribution of Listings by Neighborhood')
-        plt.xlabel('Neighborhood')
-        plt.ylabel('Count')
-        plt.xticks(rotation=45)
-        sns.set(style="darkgrid")
-        sns.countplot(data=df, x='neighbourhood_cleansed', order=df['neighbourhood_cleansed'].value_counts().index)
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "listings_by_neighborhood.png"))
         plt.show()
 
         """
@@ -341,49 +476,11 @@ class EDA:
         plt.title('Price Distribution by Host Response Time')
         plt.xlabel('Host Response Time')
         plt.ylabel('Price')
-        sns.set(style="darkgrid")
         sns.boxplot(data=df, x='host_response_time', y='price',
                     order=['within an hour', 'within a few hours', 'within a day', 'a few days or more'])
         plt.savefig(
             Path.cwd().parents[1].joinpath(
                 "reports/figures", "host_response_time_by_price.png"))
-        plt.show()
-
-        """
-        Relationship between room type and number of reviews
-
-        This relationship help us understand if certain room types (e.g., entire home/apt, private room, shared room) 
-        tend to receive more reviews than others. It can provide insights into the popularity and guest satisfaction 
-        associated with different room types.
-        """
-        plt.figure(figsize=(10, 6))
-        plt.title('Number of Reviews by Room Type')
-        plt.xlabel('Room Type')
-        plt.ylabel('Number of Reviews')
-        sns.set(style="darkgrid")
-        sns.boxplot(data=df, x='room_type', y='number_of_reviews')
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "reviews_by_room_type.png"))
-        plt.show()
-
-        """
-        Relationship between host response rate and review scores
-
-        This analysis explores the potential correlation between a host's responsiveness 
-        (measured by the host response rate) and the overall review scores received by their listings. 
-        It can help identify if hosts who are more responsive tend to receive higher review scores, 
-        indicating better guest satisfaction
-        """
-        plt.figure(figsize=(10, 6))
-        plt.title('Review Scores vs. Host Response Rate')
-        plt.xlabel('Host Response Rate')
-        plt.ylabel('Review Scores Rating')
-        sns.set(style="darkgrid")
-        sns.scatterplot(data=df, x='host_response_rate', y='review_scores_rating')
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "review_scores_vs_host_response_rate.png"))
         plt.show()
 
         """
@@ -398,7 +495,6 @@ class EDA:
         plt.xlabel('Property Type')
         plt.ylabel('Count')
         plt.xticks(rotation=45)
-        sns.set(style="darkgrid")
         sns.countplot(data=df, x='property_type', order=df['property_type'].value_counts().index)
         plt.savefig(
             Path.cwd().parents[1].joinpath(
@@ -407,4 +503,14 @@ class EDA:
 
 
 if __name__ == '__main__':
-    EDA.process()
+    """
+    I explored the data to check if there are trends between
+    the explanatory variables and the target variable.
+    """
+    dea_df = process_full_listings(parent=1, verbose=False)
+    review_df = get_reviews_desc(parent=1)
+
+    EDA.feature_correlation_analysis(dea_df)
+    EDA.exploratory_analysis(dea_df)
+    EDA.neighborhood_analysis(dea_df)
+    EDA.review_analysis(dea_df, review_df)

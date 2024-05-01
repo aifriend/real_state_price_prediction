@@ -7,8 +7,6 @@ import spacy
 from pandas_parallel_apply import DataFrameParallel
 from spellchecker import SpellChecker
 
-from src.service.AnalyticService import AnalyticService
-
 
 class NlpService:
     nlp = spacy.load("en_core_web_sm")
@@ -28,7 +26,7 @@ class NlpService:
         spelled = NlpService.spell.known(word_list)
 
         ratio = len(spelled) / len(misspelled) if misspelled else 1.0
-        if ratio <= 0.7:
+        if ratio <= 0.8:
             return False
 
         return True
@@ -149,25 +147,31 @@ class NlpService:
         return rev_df
 
     @staticmethod
-    def process_reviews(reviews_desc_df):
-        # reviews usually were submitted with a medium size of 900 characters
-        AnalyticService.show_rev_length(reviews_desc_df)
-        # select reviews with less than 1000 characters
-        reviews_desc_df = reviews_desc_df[
-            (250 < reviews_desc_df['comments'].str.len()) &
-            (reviews_desc_df['comments'].str.len() <= 260)]
-        print(f"Number of reviews lower than 300 characters: {len(reviews_desc_df)}")
+    def process_reviews(reviews_df, parent=0, save=False):
+        reviews = reviews_df['comments']
+        review_lengths = reviews.str.len()
+        # plt.figure(figsize=(8, 6))
+        # plt.scatter(reviews, review_lengths, color='blue')
+        # plt.xlabel('Review')
+        # plt.ylabel('Review Length')
+        # plt.title('Relationship between Reviews and their Lengths')
+        # plt.xticks(rotation=45, ha='right')
+        # plt.tight_layout()
+        # plt.show()
+        # select reviews with less than 140 - 190 characters
+        reviews_df = reviews_df[(180 < review_lengths) & (review_lengths <= 190)]
 
         # filter in language
         print("Filter comments in english\n")
-        reviews_desc_df = NlpService.filter_english_language(reviews_desc_df, 'comments')
+        reviews_df = NlpService.filter_english_language(reviews_df, 'comments')
 
         # Preprocess reviews
-        reviews_df = NlpService.preprocess_reviews(reviews_desc_df)
+        reviews_df = NlpService.preprocess_reviews(reviews_df)
 
         # Save preprocessed reviews
-        reviews_df.to_csv(
-            Path.cwd().parents[0].joinpath(
-                "data/processed", "neighborhood_reviews.csv.gz"), index=False, compression='gzip')
+        if save:
+            reviews_df.to_csv(
+                Path.cwd().parents[parent].joinpath(
+                    "data/processed", "neighborhood_reviews.csv.gz"), index=False, compression='gzip')
 
         return reviews_df

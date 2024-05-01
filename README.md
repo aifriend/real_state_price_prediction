@@ -66,6 +66,8 @@ Si quieres/puedes hacer algún otro tipo de demostración de habilidades técnic
     │
     ├── pyproject.toml   <- The requirements file for reproducing the analysis environment with poetry
     │
+    ├── poetry.lock   <- Poetry lock file for specific requirement versions  
+    │
     ├── setup.py           <- makes project pip installable (pip install -e .) so src can be imported
     ├── src                <- Source code for use in this project.
     │   ├── __init__.py    <- Makes src a Python module

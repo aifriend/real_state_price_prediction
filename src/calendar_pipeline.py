@@ -1,6 +1,5 @@
-"""Here's a step-by-step approach to solving the task using Python:
-
-1. Data Loading and Preprocessing:
+"""
+Data Loading and Preprocessing:
    - Load the data files into Python using libraries like pandas.
    - Perform data cleaning and preprocessing:
      - Handle missing values

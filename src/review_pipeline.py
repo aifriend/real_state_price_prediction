@@ -1,16 +1,90 @@
+"""
+Data Loading and Preprocessing:
+   - Load the data files into Python using libraries like pandas.
+   - Perform data cleaning and preprocessing:
+     - Handle missing values
+     - Convert data types if necessary
+     - Merge relevant datasets based on common columns
+   - Explore the data to gain initial insights
+"""
 from collections import Counter
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
-from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans
 from sklearn.feature_extraction.text import TfidfVectorizer
 from transformers import BertTokenizer, BertModel
 
 from src.listing_pipeline import process_full_listings
-from src.review_pipeline import get_reviews_desc
 from src.service.DataService import DataService
+from src.service.NlpService import NlpService
+
+
+def load_reviews():
+    df1 = pd.read_csv(
+        Path.cwd().parents[0].joinpath("data/raw", "reviews.csv"))
+    print(df1.head())
+
+    # Convert object type columns to string
+    df1 = DataService.convert_object_to_string(df1)
+    # convert the 'last_review' column to a date data type handling missing values
+    df1['date'] = pd.to_datetime(df1['date'], errors='coerce')
+
+    # Check missing values
+    print(df1.isna().sum())
+
+    return df1
+
+
+def load_reviews_desc():
+    df2 = pd.read_csv(
+        Path.cwd().parents[0].joinpath("data/raw", "reviews.csv.gz"))
+    print(df2.head())
+
+    # Convert object type columns to string
+    df2 = DataService.convert_object_to_string(df2)
+    # convert the 'last_review' column to a date data type handling missing values
+    df2['date'] = pd.to_datetime(df2['date'], errors='coerce')
+
+    # Impute missing values
+    print(df2.isna().sum())
+    # fill reviewer_name with 'None'
+    df2['reviewer_name'] = df2['reviewer_name'].fillna('None')
+    # fill comments with empty string
+    df2['comments'] = df2['comments'].fillna('')
+    print(df2.isna().sum())
+
+    return df2
+
+
+def get_reviews_desc(parent=0, cached=False):
+    if not cached:
+        _, reviews_desc_df = _preprocess_merged_reviews()
+        reviews_desc_df = NlpService.process_reviews(
+            reviews_desc_df, parent, save=True)
+    else:
+        print("Load processed reviews")
+        reviews_desc_df = pd.read_csv(
+            Path.cwd().parents[parent].joinpath(
+                "data/processed", "neighborhood_reviews.csv.gz"))
+
+    return reviews_desc_df
+
+
+def _get_merged_reviews():
+    return load_reviews(), load_reviews_desc()
+
+
+def _preprocess_merged_reviews():
+    # Load reviews
+    rev_df, rev_desc_df = _get_merged_reviews()
+
+    for column in rev_desc_df.columns:
+        print(f"\n{column.upper()}\n{'=' * 20}\n{rev_desc_df[column].describe()}")
+        print(f"Number of null values: {rev_desc_df[column].isna().sum()}\n")
+
+    return rev_df, rev_desc_df
 
 
 def process_reviews_by_clustering():
@@ -91,11 +165,11 @@ def process_reviews_by_clustering():
     Cluster 0:
     Top terms: [('definitely', 1), ('cool', 1), ('bathroom', 1), ('hot', 1), ('way', 1), ('great', 1), ('family', 1)]
     Example reviews: ['great family nice go way accommodate room spacious bathroom great , hot shower , patio super cool definitely recommend stay family']
-
+    
     Cluster 1:
     Top terms: [('good', 41), ('flat', 34), ('great', 29), ('place', 29), ('check', 29), ('nice', 24), ('jose', 24)]
     Example reviews: ['tsvetana friendly hospitable , speak common language , able need . room apartment nice clean . beautiful park near apartment worth visit .']
-
+    
     Cluster 2:
     Top terms: [('enjoy', 2), ('single', 1), ('minute', 1), ('elizabeth', 1), ('solo', 1), ('family', 1), ('10', 1)]
     Example reviews: ['elizabeth place clean nice . family ( especially granddaughter ) friendly helpful . 10 minute walk metro , single solo traveler feel safe nice neighborhood . thank great stay']
@@ -106,19 +180,19 @@ def process_reviews_by_clustering():
     Cluster 0:
     Top terms: [('definitely', 1), ('cool', 1), ('bathroom', 1), ('hot', 1), ('way', 1), ('great', 1), ('family', 1)]
     Example reviews: ['great family nice go way accommodate room spacious bathroom great , hot shower , patio super cool definitely recommend stay family']
-
+    
     Cluster 1:
     Top terms: [('good', 11), ('travel', 10), ('nice', 9), ('expect', 8), ('great', 8), ('taxi', 7), ('tip', 7)]
     Example reviews: ['marga house exactly picture lovely host . difficulty communicate manage . kind accommodate friend separate room despite pay . highly recommend']
-
+    
     Cluster 2:
     Top terms: [('enjoy', 2), ('especially', 1), ('family', 1), ('helpful', 1), ('granddaughter', 1), ('single', 1), ('10', 1)]
     Example reviews: ['elizabeth place clean nice . family ( especially granddaughter ) friendly helpful . 10 minute walk metro , single solo traveler feel safe nice neighborhood . thank great stay']
-
+    
     Cluster 3:
     Top terms: [('flat', 31), ('good', 29), ('check', 24), ('great', 23), ('place', 22), ('nice', 19), ('maria', 19)]
     Example reviews: ['tsvetana friendly hospitable , speak common language , able need . room apartment nice clean . beautiful park near apartment worth visit .']
-
+    
     Cluster 4:
     Top terms: [('exactly', 1), ('evening', 1), ('couple', 1), ('consider', 1), ('boy', 1), ('late', 1), ('subway', 1)]
     Example reviews: ['need place lay couple night exactly . quiet neighborhood 50 m local subway stop . marcos boy kind consider friend , late evening .']
@@ -126,58 +200,5 @@ def process_reviews_by_clustering():
     cluster_listings(reviews_df, num_clusters=5)
 
     """
-    Cluster 0:
-    Top terms: [('definitely', 1), ('cool', 1), ('bathroom', 1), ('hot', 1), ('way', 1), ('great', 1), ('family', 1)]
-    Example reviews: ['great family nice go way accommodate room spacious bathroom great , hot shower , patio super cool definitely recommend stay family']
-    
-    Cluster 1:
-    Top terms: [('place', 4), ('room', 2), ('stay', 2), ('miguel', 2), ('good', 2), ('muy', 2), ('sure', 1)]
-    Example reviews: ['esther friendly , helpful , super person , house clean quiet like star hotel , area like restaurant , supermarket . \n highly recommend room traveler , stay room sure .']
-    
-    Cluster 2:
-    Top terms: [('family', 1), ('especially', 1), ('elizabeth', 1), ('clean', 1), ('helpful', 1), ('walk', 1), ('nice', 1)]
-    Example reviews: ['elizabeth place clean nice . family ( especially granddaughter ) friendly helpful . 10 minute walk metro , single solo traveler feel safe nice neighborhood . thank great stay']
-    
-    Cluster 3:
-    Top terms: [('good', 34), ('flat', 32), ('great', 25), ('check', 25), ('nice', 23), ('place', 21), ('eat', 19)]
-    Example reviews: ['marga house exactly picture lovely host . difficulty communicate manage . kind accommodate friend separate room despite pay . highly recommend']
-    
-    Cluster 4:
-    Top terms: [('communication', 1), ('arrive', 1), ('apartment', 1), ('little', 1), ('host', 1), ('lovely', 1), ('jose', 1)]
-    Example reviews: ['jose kind considerate host great communication . help arrive airport flight little late regular transfer . apartment lovely clean , good facility . shower lovely . thank jose .']
-    
-    Cluster 5:
-    Top terms: [('communication', 1), ('city', 1), ('bit', 1), ('bike', 1), ('trouble', 1), ('walk', 1), ('enjoy', 1)]
-    Example reviews: ['bit trouble communication host speak english room nice far metro . park nearby enjoy bike ride feel like take walk enjoy atmosphere outside city .']
-    
-    Cluster 6:
-    Top terms: [('issue', 1), ('find', 1), ('cause', 1), ('barrier', 1), ('language', 1), ('way', 1), ('great', 1)]
-    Example reviews: ['place great amazing key slightly stiff cause major issue number occasion stay perfect substantial language barrier jesus find way great']
-    
-    Cluster 7:
-    Top terms: [('apartment', 9), ('good', 8), ('place', 8), ('close', 6), ('maria', 6), ('house', 6), ('minute', 6)]
-    Example reviews: ['tsvetana friendly hospitable , speak common language , able need . room apartment nice clean . beautiful park near apartment worth visit .']
-    
-    Cluster 8:
-    Top terms: [('bruna', 1), ('bit', 1), ('away', 1), ('20', 1), ('19euro', 1), ('helpful', 1), ('want', 1)]
-    Example reviews: ['bruna nice helpful short stay madrid . location bit far tourist want uber ride 20 minute & ( 17 - 19euro ) away el centro / plaza mayor . , great .']
-    
-    Cluster 9:
-    Top terms: [('exactly', 1), ('evening', 1), ('couple', 1), ('consider', 1), ('boy', 1), ('late', 1), ('subway', 1)]
-    Example reviews: ['need place lay couple night exactly . quiet neighborhood 50 m local subway stop . marcos boy kind consider friend , late evening .']
     """
     cluster_listings(reviews_df, num_clusters=10)
-
-
-def main_features():
-    forest = DataService.load_model(
-        'forest', parent=1, apex='feature_selection')
-
-    # Feature importance
-    importance = forest.feature_importances_
-    for i, v in enumerate(importance):
-        print('feature: %d, score: %.5f' % (i, v))
-    sns.set()
-    plt.bar([x for x in range(len(importance))], importance)
-    plt.title("A barplot showing the significance of each feature")
-    plt.show()

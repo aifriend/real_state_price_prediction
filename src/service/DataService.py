@@ -1,3 +1,6 @@
+import pickle
+from pathlib import Path
+
 import pandas as pd
 
 
@@ -58,3 +61,17 @@ class DataService:
                 df[column] = df[column].astype('string')
 
         return df
+
+    @staticmethod
+    def save_model(model, parent=0, apex='default'):
+        model_name = f"{apex}_{model.__class__.__name__}"
+        pickle.dump(model, open(
+            Path.cwd().parents[parent].joinpath(
+                "models", model_name), 'wb'))
+
+    @staticmethod
+    def load_model(model: str, parent=0, apex='default'):
+        model_name = f"{apex}_{model.__class__.__name__}"
+        loaded_model = pickle.load(open(Path.cwd().parents[parent].joinpath(
+            "models", model_name), 'rb'))
+        return loaded_model

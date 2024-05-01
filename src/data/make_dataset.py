@@ -5,8 +5,8 @@ from pathlib import Path
 import click
 from dotenv import find_dotenv, load_dotenv
 
-from src.calendar_process import process_calendar
-from src.listing_process import process_merged_listings
+from src.calendar_pipeline import process_calendar
+from src.listing_pipeline import process_full_listings
 
 
 @click.command()
@@ -19,7 +19,7 @@ def main(input_filepath, output_filepath):
     logger = logging.getLogger(__name__)
     logger.info('making final data set from raw data')
 
-    process_merged_listings()
+    process_full_listings()
     process_calendar()
 
 
