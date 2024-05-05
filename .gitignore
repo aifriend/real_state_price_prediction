@@ -171,3 +171,6 @@ fabric.properties
 
 !.idea/codeStyles
 !.idea/runConfigurations
+
+/src/rental.log
+rental.log

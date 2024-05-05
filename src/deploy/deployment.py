@@ -43,7 +43,7 @@ def get_latitude_longitude(address):
         # Assign missing values and print error message if the request failed
         latitude = np.nan
         longitude = np.nan
-        print(f"Geocoding request failed for {address}")
+        logger.info(f"Geocoding request failed for {address}")
 
     # Return latitude and longitude
     return latitude, longitude
@@ -53,7 +53,7 @@ def get_latitude_longitude(address):
 def get_meters_to_cbd(property_latitude, property_longitude):
     # Return a missing value if latitude or longitude is missing
     if np.isnan(property_latitude) or np.isnan(property_longitude):
-        print(f"Property latitude or longitude missing. Assigning missing value for meters to CBD.")
+        logger.info(f"Property latitude or longitude missing. Assigning missing value for meters to CBD.")
         return np.nan
 
     # Latitude and longitude of central business district (i.e. Raffles Place)
@@ -77,9 +77,9 @@ def get_meters_to_cbd(property_latitude, property_longitude):
     # Process the response to get the distance
     if "rows" in data and data["rows"]:
         meters_to_cbd = data["rows"][0]["elements"][0]["distance"]["value"]
-        print(f"Distance between property and CBD: {meters_to_cbd} meters")
+        logger.info(f"Distance between property and CBD: {meters_to_cbd} meters")
     else:
-        print("No distance information available.")
+        logger.info("No distance information available.")
         return np.nan
     return meters_to_cbd
 
@@ -88,7 +88,8 @@ def get_meters_to_cbd(property_latitude, property_longitude):
 def get_school_location(property_latitude, property_longitude):
     # Return missing value if latitude or longitude is missing
     if np.isnan(property_latitude) or np.isnan(property_longitude):
-        print(f"Property latitude or longitude missing. Assigning missing values for school latitude and longitude.")
+        logger.info(
+            f"Property latitude or longitude missing. Assigning missing values for school latitude and longitude.")
         return np.nan, np.nan
 
     # Base URL for the Google Maps Places Nearby Search API
@@ -113,12 +114,12 @@ def get_school_location(property_latitude, property_longitude):
         school_location = closest_school["geometry"]["location"]
         school_latitude = school_location["lat"]
         school_longitude = school_location["lng"]
-        print(f"Closest school: {school_name}")
-        print(f"Latitude: {school_latitude}, Longitude: {school_longitude}")
+        logger.info(f"Closest school: {school_name}")
+        logger.info(f"Latitude: {school_latitude}, Longitude: {school_longitude}")
     else:
         school_latitude = np.nan
         school_longitude = np.nan
-        print("No schools found nearby.")
+        logger.info("No schools found nearby.")
     return school_latitude, school_longitude
 
 
@@ -126,12 +127,12 @@ def get_school_location(property_latitude, property_longitude):
 def get_meters_to_school(property_latitude, property_longitude, school_latitude, school_longitude):
     # Return missing value if property latitude or longitude is missing
     if np.isnan(property_latitude) or np.isnan(property_longitude):
-        print(f"Property latitude or longitude missing. Assigning missing value for meters to school.")
+        logger.info(f"Property latitude or longitude missing. Assigning missing value for meters to school.")
         return np.nan
 
     # Return missing value if the school location is missing
     if np.isnan(school_latitude) or np.isnan(school_longitude):
-        print(f"School latitude or longitude missing. Assigning missing value for meters to school.")
+        logger.info(f"School latitude or longitude missing. Assigning missing value for meters to school.")
         return np.nan
 
     # Base URL for the Google Maps Distance Matrix API
@@ -151,9 +152,9 @@ def get_meters_to_school(property_latitude, property_longitude, school_latitude,
     # Process the response to get the distance
     if "rows" in data and data["rows"]:
         meters_to_school = data["rows"][0]["elements"][0]["distance"]["value"]
-        print(f"Distance between property and closest school: {meters_to_school} meters")
+        logger.info(f"Distance between property and closest school: {meters_to_school} meters")
     else:
-        print("No distance information available. Assigning missing value for meters to school.")
+        logger.info("No distance information available. Assigning missing value for meters to school.")
         return np.nan
     return meters_to_school
 
@@ -162,7 +163,7 @@ def get_meters_to_school(property_latitude, property_longitude, school_latitude,
 def get_restaurants_rating(property_latitude, property_longitude):
     # Return missing value if latitude or longitude is missing
     if np.isnan(property_latitude) or np.isnan(property_longitude):
-        print(f"Property latitude or longitude missing. Assigning missing value for restaurants rating.")
+        logger.info(f"Property latitude or longitude missing. Assigning missing value for restaurants rating.")
         return np.nan
 
     # Base URL for the Google Maps Places Nearby Search API
@@ -186,11 +187,11 @@ def get_restaurants_rating(property_latitude, property_longitude):
         rating_list = [restaurant.get("rating", np.nan) for restaurant in data.get("results")]
         # Calculate average rating, ignoring np.nan values
         average_rating = np.nanmean(rating_list)
-        print(f"Number of restaurants: {len(rating_list)}")
-        print(f"Number of ratings: {len([rating for rating in rating_list if not np.isnan(rating)])}")
-        print(f"Average rating: {average_rating:.2f}")
+        logger.info(f"Number of restaurants: {len(rating_list)}")
+        logger.info(f"Number of ratings: {len([rating for rating in rating_list if not np.isnan(rating)])}")
+        logger.info(f"Average rating: {average_rating:.2f}")
     else:
-        print("No restaurants found nearby. Assigning missing value for restaurants rating.")
+        logger.info("No restaurants found nearby. Assigning missing value for restaurants rating.")
         return np.nan
     return average_rating
 

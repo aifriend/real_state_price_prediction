@@ -1,3 +1,5 @@
+import math
+from collections import Counter
 from pathlib import Path
 
 import folium
@@ -6,15 +8,19 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
+from pandas import DataFrame
 from scipy import stats
 from scipy.stats import f_oneway
+from sklearn.cluster import KMeans
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.manifold import TSNE
 from sklearn.mixture import GaussianMixture
 from sklearn.preprocessing import LabelEncoder
+from transformers import BertTokenizer, BertModel
 
-from src.listing_pipeline import process_full_listings
-from src.review_pipeline import get_reviews_desc
+from src.review_etl_pipeline import process_full_reviews
 from src.service.EmbeddingService import EmbeddingService
+from src.service.RentalLogger import logger
 
 
 class EDA:
@@ -22,10 +28,126 @@ class EDA:
     Exploratory data analysis: Visualized property locations on an interactive map,
     generated a word cloud to extract insights from property agent descriptions,
     and examined descriptive statistics, distributions, and correlations.
+
+    The following methods are available:
+    - cluster_review_features
+    - feature_correlation_analysis
+    - neighborhood_analysis
+    - review_analysis
+    - feature_exploratory_analysis
     """
 
     @staticmethod
-    def feature_correlation_analysis(df):
+    def cluster_review_features() -> None:
+        """
+        Cluster review features based on TF-IDF scores
+
+        Returns:
+        """
+        # Load pre-trained BERT model and tokenizer
+        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+        model = BertModel.from_pretrained('bert-base-uncased')
+
+        def get_bert_embedding(text, b_model, b_tokenizer):
+            """
+            Generate BERT embedding for given text
+
+            Args:
+                text (str): text to be embedded
+                b_model (BertModel): pre-trained BERT model
+                b_tokenizer (BertTokenizer): pre-trained BERT tokenizer
+            """
+            inputs = b_tokenizer(text, return_tensors="pt", padding=True, truncation=True)
+            outputs = b_model(**inputs)
+            last_hidden_states = outputs.last_hidden_state
+            return last_hidden_states[:, 0, :].detach().numpy()
+
+        def contains_nan(my_list):
+            """
+            Check if a list contains NaN values
+
+            Args:
+                my_list (list): list to be checked
+            """
+            for item in my_list:
+                if isinstance(item, float) and math.isnan(item):
+                    return True
+            return False
+
+        def cluster_listings(num_clusters=5):
+            """
+            Cluster rental listings based on review embeddings
+
+            Args:
+                num_clusters (int): number of clusters to be generated
+            """
+            logger.info("Load listings reviews")
+            reviews_listings_df = process_full_reviews(parent=1)
+
+            # all listings
+            # reviews_listings_df = reviews_listings_df.loc[:1000, :]
+            grouped_df = reviews_listings_df.groupby("neighbourhood")['comments'].apply(list).reset_index()
+            grouped_df = grouped_df[grouped_df['comments'].apply(lambda x: len(x) > 0)]
+
+            # Generate BERT embeddings for each listing's reviews
+            listing_embeddings = []
+            listing_keys = []
+            listing_reviews = dict()
+            for idx, (index, row) in enumerate(grouped_df.iterrows()):
+                reviews = row['comments'][:30]  # Limit the number of reviews
+                if contains_nan(reviews):
+                    continue
+                listing_neighbourhood = row['neighbourhood']
+                listing_keys.append(listing_neighbourhood)
+                listing_reviews[listing_neighbourhood] = reviews
+                logger.info(f"Embedding for [{idx + 1}/{len(grouped_df)}] "
+                            f"neighbourhood: {listing_neighbourhood} - "
+                            f"comments: {len(reviews)}")
+                review_embeddings = [get_bert_embedding(review, model, tokenizer) for review in reviews]
+                if review_embeddings:
+                    listing_embedding = np.mean(review_embeddings, axis=0)
+                    listing_embeddings.append(listing_embedding[0])
+
+            # Perform K-means clustering on listing embeddings
+            kmeans = KMeans(n_clusters=num_clusters, random_state=42)
+            kmeans.fit(listing_embeddings)
+            cluster_labels = kmeans.labels_
+
+            # Print cluster details
+            cluster_reviews = {i: [] for i in range(num_clusters)}
+            for listing_id, label in zip(listing_keys, cluster_labels):
+                cluster_reviews[label].extend(listing_reviews[listing_id])
+
+            for i, reviews in cluster_reviews.items():
+                logger.info(f"Cluster {i}:")
+                logger.info(f"Top terms: {get_top_terms(reviews)}")
+                logger.info(f"Example reviews: {reviews[:1]}")
+
+            return cluster_labels
+
+        def get_top_terms(reviews, n=7):
+            """
+            Get top N terms based on TF-IDF scores
+
+            Args:
+                reviews (list): list of reviews
+                n (int): number of top terms to be returned
+            """
+            vectorizer = TfidfVectorizer()
+            tfidf = vectorizer.fit_transform(reviews)
+            feature_names = vectorizer.get_feature_names_out()
+            top_terms = Counter()
+            for i in range(tfidf.shape[0]):
+                top_indices = tfidf[i].toarray().argsort()[0][-n:]
+                top_terms.update(feature_names[top_indices])
+
+            top_terms = top_terms.most_common(n)
+            return top_terms
+
+        cluster_listings(num_clusters=5)
+
+    @staticmethod
+    def feature_correlation_analysis(df: DataFrame) -> None:
         """
         visualizing the correlation of the features
 
@@ -38,31 +160,18 @@ class EDA:
         -minimum_minimum_nights
         -maximum_minimum_nights
 
-        Also relation between host_listing_count and availabilities
+        Also, relation between host_listing_count and availabilities
+
+        Args:
+            df (pd.DataFrame): dataframe containing the features
         """
-        corr_df = pd.DataFrame(df)
-        corr_df.drop(columns=[
-            'id', 'host_id', 'name', 'host_name', 'last_review',
-            'listing_url', 'neighborhood_overview', 'notes', 'transit',
-            'scrape_id', 'last_scraped', 'summary', 'description',
-            'access', 'interaction', 'house_rules', 'picture_url',
-            'host_url', 'host_since', 'host_about', 'host_thumbnail_url',
-            'host_picture_url', 'host_verifications', 'amenities',
-            'calendar_updated', 'calendar_last_scraped', 'first_review'
-        ], inplace=True)
         # Select numerical columns
-        numerical_columns = corr_df.select_dtypes(include=['int', 'float'])
-        numerical_columns.drop(columns=[
-            'latitude', 'longitude'
-        ], inplace=True)
+        numerical_columns = df.select_dtypes(include=['int', 'float'])
+
         # Select categorical columns
-        categorical_columns = corr_df.select_dtypes(include=['category'])
-        categorical_columns.drop(columns=[
-            'host_neighbourhood'
-        ], inplace=True)
-        # Initialize LabelEncoder
-        label_encoder = LabelEncoder()
+        categorical_columns = df.select_dtypes(include=['category'])
         # Apply LabelEncoder to the categorical column
+        label_encoder = LabelEncoder()
         for column in categorical_columns.columns:
             categorical_columns[column] = (
                 label_encoder.fit_transform(categorical_columns[column]))
@@ -77,10 +186,15 @@ class EDA:
         plt.show()
 
     @staticmethod
-    def neighborhood_analysis(df):
+    def neighborhood_analysis(df: DataFrame) -> None:
         """
-        Analyze the relationship between price and neighborhood
+        Exploratory analysis of the neighborhood
+
+        Args:
+            df (pd.DataFrame): dataframe containing the features
         """
+
+        # Analyze the relationship between price and neighborhood
         plt.figure(figsize=(12, 8))
         plt.title('Price Distribution by Neighborhood')
         plt.xlabel('Neighborhood')
@@ -106,7 +220,7 @@ class EDA:
 
         # This will provide an overview of the average, median, minimum, and maximum prices for each neighborhood
         neighborhood_stats = df.groupby('neighbourhood_group')['price'].agg(['mean', 'median', 'min', 'max'])
-        print(neighborhood_stats)
+        logger.info(neighborhood_stats)
 
         # Statistical tests to compare prices across neighborhoods
         neighborhoods = df['neighbourhood_group'].unique()
@@ -115,17 +229,16 @@ class EDA:
         # A low p-value (typically < 0.05) indicates that there are statistically significant differences
         # in prices between at least two neighborhoods
         f_statistic, p_value = f_oneway(*price_data)
-        print(f"One-way ANOVA: F-statistic = {f_statistic:.2f}, p-value = {p_value:.4f}")
+        logger.info(f"One-way ANOVA: F-statistic = {f_statistic:.2f}, p-value = {p_value:.4f}")
 
         # Create a heatmap to visualize the correlation between price and other relevant features
         # This heatmap visualizes the correlation between price and other relevant features such as minimum nights,
         # number of reviews, reviews per month, host listings count, and availability. It helps identify any potential
-        # relationships or patterns between these features and the price like: number_of_reviews (0.69) and
-        # calculated_host_listings_count (0.17)
+        # relationships or patterns between these features and the price like: number_of_reviews (0.69)
         plt.figure(figsize=(10, 8))
         plt.title('Correlation Heatmap')
-        sns.heatmap(df[['price', 'minimum_nights', 'number_of_reviews', 'reviews_per_month',
-                        'calculated_host_listings_count', 'availability_365']].corr(), annot=True, cmap='coolwarm')
+        sns.heatmap(df[['price', 'minimum_nights', 'number_of_reviews',
+                        'reviews_per_month', 'availability_365']].corr(), annot=True, cmap='coolwarm')
         plt.savefig(
             Path.cwd().parents[1].joinpath(
                 "reports/figures", "heatmap_reduced.png"))
@@ -135,8 +248,8 @@ class EDA:
         # This code identifies the top neighborhoods based on the average price,
         # providing insights into the most expensive areas in the city.
         top_neighborhoods = neighborhood_stats.sort_values(by='mean', ascending=False).head(10)
-        print("Top Neighborhoods by Average Price:")
-        print(top_neighborhoods)
+        logger.info("Top Neighborhoods by Average Price:")
+        logger.info(top_neighborhoods)
 
         """
         Visualize the distribution of listings by neighborhood
@@ -181,7 +294,7 @@ class EDA:
                 "reports/figures", "property_map.html"))
 
     @staticmethod
-    def review_analysis(listings_df, reviews_df):
+    def review_analysis(listings_df: DataFrame) -> None:
         """
         Analyze the relationship between price and number of reviews
 
@@ -189,6 +302,13 @@ class EDA:
         of reviews it has received.
         - This suggests that higher-priced listings tend to receive more reviews, possibly due to
         their popularity or quality.
+
+        - The correlation coefficient ranges from -1 to 1, where values close to 1 indicate a strong positive
+        correlation, values close to -1 indicate a strong negative correlation, and values close to 0 indicate
+        a weak or no correlation.
+
+        Args:
+            listings_df (DataFrame): The DataFrame containing the listings data.
         """
         plt.figure(figsize=(10, 6))
         plt.title('Price vs. Number of Reviews (scatter)')
@@ -205,7 +325,7 @@ class EDA:
         # where values close to 1 indicate a strong positive correlation, values close to -1 indicate a strong negative
         # correlation, and values close to 0 indicate a weak or no correlation.
         correlation = listings_df['price'].corr(listings_df['number_of_reviews'])
-        print(f"Correlation between price and number of reviews: {correlation:.2f}")
+        logger.info(f"Correlation between price and number of reviews: {correlation:.2f}")
 
         # Price distribution by review categories
         # Categorize the number of reviews into different bins (e.g., Low, Medium, High, Very High) and
@@ -235,9 +355,9 @@ class EDA:
             listings_df[listings_df['review_category'] == 'High']['price'],
             listings_df[listings_df['review_category'] == 'Very High']['price']
         )
-        print(f"ANOVA test results:")
-        print(f"F-statistic: {f_statistic:.2f}")
-        print(f"p-value: {p_value:.4f}")
+        logger.info(f"ANOVA test results:")
+        logger.info(f"F-statistic: {f_statistic:.2f}")
+        logger.info(f"p-value: {p_value:.4f}")
 
         """
         Relationship between room type and number of reviews
@@ -277,12 +397,12 @@ class EDA:
         """
         Relationship between review length and number of reviews
         """
-        reviews_df['review_length'] = reviews_df['comments'].apply(len)
+        listings_df['review_length'] = listings_df['comments'].apply(len)
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.set_title('Distribution of Review Lengths')
         ax.set_xlabel('Review Length')
         ax.set_ylabel('Count')
-        sns.histplot(data=reviews_df, x='review_length', ax=ax, kde=True)
+        sns.histplot(data=listings_df, x='review_length', ax=ax, kde=True)
         plt.savefig(
             Path.cwd().parents[1].joinpath(
                 "reports/figures", "reviews_length.png"))
@@ -291,9 +411,9 @@ class EDA:
         """
         Reviews per day
         """
-        reviews_df['date'] = pd.to_datetime(reviews_df['date'])
-        daily_reviews = reviews_df.groupby(
-            reviews_df['date'].dt.date).size().reset_index(name='count')
+        listings_df['date'] = pd.to_datetime(listings_df['date'])
+        daily_reviews = listings_df.groupby(
+            listings_df['date'].dt.date).size().reset_index(name='count')
         fig, ax = plt.subplots(figsize=(12, 6))
         ax.set_title('Daily Number of Reviews')
         ax.set_xlabel('Date')
@@ -310,11 +430,11 @@ class EDA:
         the data is generated from a mixture of a finite number of Gaussian distributions.
         It can automatically determine the optimal number of clusters based on the data.
         """
-        print("Transform text to an embedding vector space")
+        logger.info("Transform text to an embedding vector space")
         emb_service = EmbeddingService()
-        emb_reviews_df = emb_service.get_embeddings(reviews_df, 'comments')
+        emb_reviews_df = emb_service.get_embeddings(listings_df, 'comments')
 
-        print("Split the data into training and testing sets")
+        logger.info("Split the data into training and testing sets")
         embeddings = np.array(emb_reviews_df['comments_emb'].tolist())
 
         # Flatten the embeddings
@@ -355,7 +475,14 @@ class EDA:
         plt.show()
 
     @staticmethod
-    def exploratory_analysis(df):
+    def feature_exploratory_analysis(df: DataFrame) -> None:
+        """
+        Visualize the distribution of rental prices
+
+        Args:
+            df (DataFrame): DataFrame containing rental data
+        """
+
         """
         Analyze the distribution of rental prices
 
@@ -389,24 +516,6 @@ class EDA:
         plt.savefig(
             Path.cwd().parents[1].joinpath(
                 "reports/figures", "room_types_distribution.png"))
-        plt.show()
-
-        """
-        Visualize the distribution of listings by host
-
-        - The distribution of listings by host reveals that a small number of hosts have a large number 
-        of listings, while the majority of hosts have only a few listings due to professional hosts or 
-        property management companies present in the market.
-        - Similar results can be drawn from the figure of distribution on rental prices.
-        """
-        plt.figure(figsize=(10, 6))
-        plt.title('Distribution of Listings by Host')
-        plt.xlabel('Number of Listings')
-        plt.ylabel('Count')
-        sns.histplot(data=df, x='calculated_host_listings_count', kde=True)
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "listings_distribution.png"))
         plt.show()
 
         """
@@ -477,7 +586,7 @@ class EDA:
         plt.xlabel('Host Response Time')
         plt.ylabel('Price')
         sns.boxplot(data=df, x='host_response_time', y='price',
-                    order=['within an hour', 'within a few hours', 'within a day', 'a few days or more'])
+                    order=[3, 4, 1, 0])
         plt.savefig(
             Path.cwd().parents[1].joinpath(
                 "reports/figures", "host_response_time_by_price.png"))
@@ -501,16 +610,21 @@ class EDA:
                 "reports/figures", "property_type_distribution.png"))
         plt.show()
 
+        """
+        Cluster rental listings based on review embeddings
+        """
+        EDA.cluster_review_features()
+
 
 if __name__ == '__main__':
     """
     I explored the data to check if there are trends between
     the explanatory variables and the target variable.
     """
-    dea_df = process_full_listings(parent=1, verbose=False)
-    review_df = get_reviews_desc(parent=1)
+    dea_df = process_full_reviews(
+        data_path='../data/interim', store_path='../data/processed')
 
-    EDA.feature_correlation_analysis(dea_df)
-    EDA.exploratory_analysis(dea_df)
-    EDA.neighborhood_analysis(dea_df)
-    EDA.review_analysis(dea_df, review_df)
+    # EDA.feature_correlation_analysis(dea_df)
+    # EDA.feature_exploratory_analysis(dea_df)
+    # EDA.neighborhood_analysis(dea_df)
+    EDA.review_analysis(dea_df)

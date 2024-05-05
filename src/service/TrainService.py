@@ -1,5 +1,10 @@
+from typing import List
+
 import numpy as np
+import seaborn as sns
 from gensim.models import Word2Vec
+from matplotlib import pyplot as plt
+from pandas import DataFrame
 from sklearn.cluster import KMeans
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.ensemble import RandomForestRegressor
@@ -15,14 +20,40 @@ from xgboost import XGBRegressor
 
 from src.service.DataService import DataService
 from src.service.EmbeddingService import EmbeddingService
+from src.service.RentalLogger import logger
 
 
 class TrainService:
 
     @staticmethod
-    def train_review_sentiment_analysis(rev_df, parent=0):
+    def TrainSampleModel(train_df):
         """
-        In this method, we perform sentiment analysis on the reviews with these steps:
+        Train Sample Model
+
+        Args:
+            train_df (DataFrame): train dataframe
+
+        Returns:
+            Xtr, Xts, ytr, yts (np.ndarray): Xtr, Xts, ytr, yts
+        """
+
+        # X and y
+        X = train_df.drop(['price'], axis=1).values
+        y = train_df['price'].values
+        logger.info(X.shape)
+        logger.info(y.shape)
+
+        # Split the data into training and testing sets
+        Xtr, Xts, ytr, yts = train_test_split(
+            X, y, test_size=0.3, random_state=42)
+
+        return Xtr, Xts, ytr, yts
+
+    # Train
+    @staticmethod
+    def train_review_sentiment_analysis(rev_df: DataFrame, parent: int = 0) -> None:
+        """
+        In this method, I perform sentiment analysis on the reviews with these steps:
         1) We have a list of review texts without any sentiment labels.
         2) We tokenize the reviews by splitting them into words.
         3) We train a Word2Vec model on the tokenized reviews to learn word embeddings.
@@ -34,6 +65,13 @@ class TrainService:
 
         In this unsupervised approach, we don't have explicit sentiment labels. Instead, we rely on the clustering algorithm to group similar reviews together based on their embeddings. The assumption is that reviews with similar sentiments will have similar embeddings and will be clustered together.
         Note that the interpretation of the clusters as positive or negative sentiment may require manual inspection of the reviews within each cluster. Additionally, the optimal number of clusters may vary depending on the data and the desired granularity of sentiment analysis.
+
+        Args:
+            rev_df: reviews dataframe
+            parent: parent id
+
+        Returns:
+            None
         """
         reviews = rev_df['comments']
 
@@ -60,13 +98,12 @@ class TrainService:
 
         # Evaluate clustering performance using silhouette score
         silhouette_avg = silhouette_score(review_embeddings, cluster_labels)
-        print(f"Silhouette Score: {silhouette_avg:.2f}")
+        logger.info(f"Silhouette Score: {silhouette_avg:.2f}")
 
         # Print the reviews and their assigned cluster labels
-        for review, label in zip(reviews, cluster_labels):
-            print(f"Review: {review}")
-            print(f"Cluster Label: {label}")
-            print()
+        for review, label in zip(reviews, cluster_labels)[:5]:
+            logger.info(f"Review: {review}")
+            logger.info(f"Cluster Label: {label}")
 
         # Predict the cluster for a new review
         new_review = "The room was spacious and clean, but the staff was rude."
@@ -74,11 +111,11 @@ class TrainService:
         new_review_embedding = np.mean(
             [model.wv[word] for word in new_review_tokens if word in model.wv], axis=0)
         new_review_cluster = kmeans.predict([new_review_embedding])[0]
-        print(f"New Review: {new_review}")
-        print(f"Predicted Cluster: {new_review_cluster}")
+        logger.info(f"New Review: {new_review}")
+        logger.info(f"Predicted Cluster: {new_review_cluster}")
 
     @staticmethod
-    def train_reviews_by_score(rev_df, parent):
+    def train_reviews_by_score(rev_df, parent) -> (LogisticRegression, EmbeddingService, List, List):
         """
         The following code is used for text clustering and documents embedding. We want to represent reviews
         as vectors representation to be able to apply clustering algorithms to detect topics. Reviews are
@@ -88,18 +125,28 @@ class TrainService:
         We analyzed the relationship between the description of each listing and its price,
         and proposed a text-based price recommendation system called TAPE to recommend a reasonable price
         for newly added listings
+
+        Args:
+            rev_df: reviews dataframe
+            parent: parent id
+
+        Returns:
+            classifier: classifier
+            emb_service: embedding service
+            X_test: test data
+            y_test: test labels
         """
-        print("Transform text to an embedding vector space")
+        logger.info("Transform text to an embedding vector space")
         emb_service = EmbeddingService()
         listings_reviews_df = emb_service.get_embeddings(rev_df, 'comments')
 
-        print("Split the data into training and testing sets")
+        logger.info("Split the data into training and testing sets")
         embeddings = listings_reviews_df['comments_emb'].tolist()
         labels = listings_reviews_df['review_scores_value'].tolist()
         X_train, X_test, y_train, y_test = train_test_split(
             embeddings, labels, test_size=0.2, random_state=42)
 
-        print("Train a logistic regression model using embeddings")
+        logger.info("Train a logistic regression model using embeddings")
         classifier = LogisticRegression()
         classifier.fit(X_train, y_train)
         DataService.save_model(
@@ -108,66 +155,80 @@ class TrainService:
         return classifier, emb_service, X_test, y_test
 
     @staticmethod
-    def hyperparameter_grid_search(X, y):
-        """
-        Hyperparameter Tuning
-
-        Identified XGBoost and Gradient Boosting as the top two performers for hyperparameter tuning.
-        Employed grid search with 5-fold cross-validation to find the best hyperparameter combinations.
-        Selected the model that demonstrated the best performance on the validation data.
-        XGBoost Hyperparameter Tuning:
-        Hyperparameter      Explanation                                                 Values
-        n_estimators	    Number of trees	                                            [100, 200, 300, 400, 500]
-        max_depth	        Maximum depth of each tree	                                [3, 4, 5]
-        subsample	        Fraction of samples used for fitting each tree	            [0.8, 0.9, 1.0]
-        colsample_bytree	Fraction of features used for fitting each tree	            [0.8, 0.9, 1.0]
-        learning_rate	    Rate at which the model adapts during training	            [0.1, 0.01, 0.001]
-        min_child_weight	Minimum sum of instance weight (hessian) needed in a child	[1, 2, 3]
-        gamma	            Minimum loss reduction required when splitting a node	    [0, 0.1, 0.2]
-        """
-
-        # Create the XGBRegressor model
-        model = XGBRegressor()
-
-        # Define the cross-validation strategy
-        cv = KFold(n_splits=5, shuffle=True, random_state=42)
-
-        param_grid = {
-            'max_depth': [3, 4, 5],
-            'learning_rate': [0.1, 0.01],
-            'n_estimators': [100, 200, 300, 400, 500],
-            'subsample': [0.8, 0.9, 1.0],
-            'colsample_bytree': [0.8, 0.9, 1.0],
-            'min_child_weight': [1, 2, 3],
-            'gamma': [0, 0.1, 0.2]
-        }
-
-        print("Performing grid search...")
-        grid_search = GridSearchCV(
-            estimator=model, param_grid=param_grid, cv=cv,
-            scoring='neg_mean_squared_error', n_jobs=-1, verbose=2)
-        grid_search.fit(X, y)
-
-        best_model = grid_search.best_estimator_
-        return best_model, -grid_search.best_score_, grid_search.best_params_
-
-    @staticmethod
-    def xgboost_tuning(X_train, y_train):
+    def xgboost_tuning(X_train, y_train) -> (XGBRegressor, float, float):
         """
         The chosen model was an XGBoost regression model with the following hyperparameters:
         Best hyperparameters:  {
-            'colsample_bytree': 0.9,
+            'colsample_bytree': 1.0,
             'gamma': 0,
             'learning_rate': 0.1,
             'max_depth': 5,
-            'min_child_weight': 2,
-            'n_estimators': 500,
-            'subsample': 0.8
+            'min_child_weight': 3,
+            'n_estimators': 400,
+            'subsample': 0.9
         }
-        Best score:  47826.55584619551
+
+        Args:
+            X_train: training data
+            y_train: training labels
+
+        Returns:
+            None
         """
-        best_model, best_score, best_param = (
-            TrainService.hyperparameter_grid_search(X_train, y_train))
+
+        def hyperparameter_grid_search(X, y) -> (XGBRegressor, float, float):
+            """
+            Hyperparameter Tuning
+
+            Identified XGBoost and Gradient Boosting as the top two performers for hyperparameter tuning.
+            Employed grid search with 5-fold cross-validation to find the best hyperparameter combinations.
+            Selected the model that demonstrated the best performance on the validation data.
+            XGBoost Hyperparameter Tuning:
+            Hyperparameter      Explanation                                                 Values
+            n_estimators	    Number of trees	                                            [100, 200, 300, 400, 500]
+            max_depth	        Maximum depth of each tree	                                [3, 4, 5]
+            subsample	        Fraction of samples used for fitting each tree	            [0.8, 0.9, 1.0]
+            colsample_bytree	Fraction of features used for fitting each tree	            [0.8, 0.9, 1.0]
+            learning_rate	    Rate at which the model adapts during training	            [0.1, 0.01, 0.001]
+            min_child_weight	Minimum sum of instance weight (hessian) needed in a child	[1, 2, 3]
+            gamma	            Minimum loss reduction required when splitting a node	    [0, 0.1, 0.2]
+
+            Args:
+                X: training data
+                y: training labels
+
+            Returns:
+                best_model_: best XGBRegressor model
+                best_score_: best score
+                best_params_: best dictionary of hyperparameters
+            """
+
+            # Create the XGBRegressor model
+            model = XGBRegressor()
+
+            # Define the cross-validation strategy
+            cv = KFold(n_splits=5, shuffle=True, random_state=42)
+
+            param_grid = {
+                'max_depth': [3, 4, 5],
+                'learning_rate': [0.1, 0.01],
+                'n_estimators': [100, 200, 300, 400, 500],
+                'subsample': [0.8, 0.9, 1.0],
+                'colsample_bytree': [0.8, 0.9, 1.0],
+                'min_child_weight': [1, 2, 3],
+                'gamma': [0, 0.1, 0.2]
+            }
+
+            logger.info("Performing grid search...")
+            grid_search = GridSearchCV(
+                estimator=model, param_grid=param_grid, cv=cv,
+                scoring='neg_mean_squared_error', n_jobs=-1, verbose=2)
+            grid_search.fit(X, y)
+
+            best_model_ = grid_search.best_estimator_
+            return best_model_, -grid_search.best_score_, grid_search.best_params_
+
+        best_model, best_score, best_param = hyperparameter_grid_search(X_train, y_train)
 
         # Train the best model on the entire dataset
         best_model.fit(X_train, y_train)
@@ -175,8 +236,34 @@ class TrainService:
         return best_model, best_score, best_param
 
     @staticmethod
-    def train(X_train, X_test, y_train, y_test):
-        def rmse(model, y_true, y_pred):
+    def train(X_train, X_test, y_train, y_test) -> (XGBRegressor, List):
+        """
+        Train the model
+
+        Baseline Models
+        Implemented five machine learning models with baseline parameter configurations and
+        evaluated model performance on the validation data based on root mean squared error (RMSE),
+        mean absolute percentage error (MAPE), and R-squared (R²).
+
+        Model	                RMSE	MAPE	R²
+        Linear Regression       407     151     0.05
+        Decision Tree           388     77      0.13
+        Xgboost                 331     110     0.36
+        Gradient Boosting       341     105     0.33
+        Random Forest           353     80      0.28
+
+        Args:
+            X_train: training data
+            X_test: test data
+            y_train: training labels
+            y_test: test labels
+
+        Returns:
+            XGBRegressor: trained model
+            List: list of X values for training
+        """
+
+        def rmse(model: object, y_true: List, y_pred: List) -> float:
             """
             Calculate the Root Mean Squared Error (RMSE) between the true and predicted values.
 
@@ -189,14 +276,15 @@ class TrainService:
                 float: RMSE value.
             """
             result = np.sqrt(mean_squared_error(y_true, y_pred))
-            print(f"{model.__class__.__name__} Root Mean Squared Error (RMSE): {result}")
+            logger.info(f"{model.__class__.__name__} Root Mean Squared Error (RMSE): {result}")
             return result
 
-        def mape(model, y_true, y_pred):
+        def mape(model: object, y_true: List, y_pred: List) -> float:
             """
             Calculate the Mean Absolute Percentage Error (MAPE) between the true and predicted values.
 
             Args:
+                model: object
                 y_true (array-like): True values.
                 y_pred (array-like): Predicted values.
 
@@ -205,14 +293,15 @@ class TrainService:
             """
             y_true, y_pred = np.array(y_true), np.array(y_pred)
             result = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
-            print(f"{model.__class__.__name__} Mean Absolute Percentage Error (MAPE): {result}")
+            logger.info(f"{model.__class__.__name__} Mean Absolute Percentage Error (MAPE): {result}")
             return result
 
-        def r2(model, y_true, y_pred):
+        def r2(model: object, y_true: List, y_pred: List) -> float:
             """
             Calculate the R-squared (R²) value between the true and predicted values.
 
             Args:
+                model: object
                 y_true (array-like): True values.
                 y_pred (array-like): Predicted values.
 
@@ -220,7 +309,7 @@ class TrainService:
                 float: R-squared value.
             """
             result = r2_score(y_true, y_pred)
-            print(f"{model.__class__.__name__} R-squared (R²): {result}")
+            logger.info(f"{model.__class__.__name__} R-squared (R²): {result}")
             return result
 
         # feature Scaling
@@ -230,17 +319,6 @@ class TrainService:
 
         """
         Baseline Models
-    
-        Implemented five machine learning models with baseline parameter configurations and evaluated model performance 
-        on the validation data based on root mean squared error (RMSE), mean absolute percentage error (MAPE), 
-        and R-squared (R²).
-    
-        Model	                RMSE	MAPE	R²   
-        Linear Regression       407     151     0.05
-        Decision Tree           388     77      0.13
-        Xgboost                 331     110     0.36
-        Gradient Boosting       341     105     0.33    
-        Random Forest           353     80      0.28
         """
 
         # linear regression
@@ -250,7 +328,7 @@ class TrainService:
         rmse(lr, y_test, y_pred_lr)
         mape(lr, y_test, y_pred_lr)
         r2(lr, y_test, y_pred_lr)
-        DataService.save_model(lr, parent=1, apex='price_prediction')
+        DataService.save_model(lr, parent=1, apex='price_train')
 
         # Decision Tree
         tree = DecisionTreeRegressor(min_samples_split=30, max_depth=10)
@@ -259,20 +337,24 @@ class TrainService:
         rmse(tree, y_test, y_pred_tree)
         mape(tree, y_test, y_pred_tree)
         r2(tree, y_test, y_pred_tree)
-        DataService.save_model(tree, parent=1, apex='price_prediction')
+        DataService.save_model(tree, parent=1, apex='price_train')
 
         # Xgboost
         xgb = XGBRegressor(
-            colsample_bytree=0.9, gamma=0,
-            learning_rate=0.1, min_child_weight=2,
-            n_estimators=500, subsample=0.8,
-            max_depth=5, n_jobs=-1)
+            colsample_bytree=1.0,
+            gamma=0,
+            learning_rate=0.1,
+            max_depth=5,
+            min_child_weight=3,
+            n_estimators=400,
+            subsample=0.9,
+            n_jobs=-1)
         xgb.fit(rescaled_x_train, y_train)
         y_pred_xgb = xgb.predict(rescaled_x_test)
         rmse(xgb, y_test, y_pred_xgb)
         mape(xgb, y_test, y_pred_xgb)
         r2(xgb, y_test, y_pred_xgb)
-        DataService.save_model(xgb, parent=1, apex='price_prediction')
+        DataService.save_model(xgb, parent=1, apex='price_train')
 
         # Gradient Boosting
         boost = GradientBoostingRegressor(
@@ -282,7 +364,7 @@ class TrainService:
         rmse(boost, y_test, y_pred_boost)
         mape(boost, y_test, y_pred_boost)
         r2(boost, y_test, y_pred_boost)
-        DataService.save_model(boost, parent=1, apex='price_prediction')
+        DataService.save_model(boost, parent=1, apex='price_train')
 
         # Random Forest
         forest = RandomForestRegressor(
@@ -292,6 +374,16 @@ class TrainService:
         rmse(forest, y_test, y_pred_forest)
         mape(forest, y_test, y_pred_forest)
         r2(forest, y_test, y_pred_forest)
-        DataService.save_model(forest, parent=1, apex='price_prediction')
+        DataService.save_model(forest, parent=1, apex='price_train')
+
+        # Feature importance
+        # Plot feature importance
+        importance = forest.feature_importances_
+        for i, v in enumerate(importance):
+            logger.info('feature: %d, score: %.5f' % (i, v))
+        sns.set()
+        plt.bar([x for x in range(len(importance))], importance)
+        plt.title("A barplot showing the significance of each feature")
+        plt.show()
 
         return xgb, rescaled_x_train

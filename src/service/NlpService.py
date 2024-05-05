@@ -1,25 +1,64 @@
 import re
 import string
-from pathlib import Path
 
 import emoji
 import spacy
-from pandas_parallel_apply import DataFrameParallel
+from pandas import DataFrame
+from parallel_pandas import ParallelPandas
 from spellchecker import SpellChecker
+
+from src.service.RentalLogger import logger
+
+ParallelPandas.initialize(n_cpu=8, split_factor=4, disable_pr_bar=False)
 
 
 class NlpService:
+    """
+    NlpService class
+
+    Methods
+    -------
+    process_reviews(reviews_df)
+    process_listings(listings_df)
+    process_listings_with_reviews(listings_df)
+    remove_emoticon_and_symbol(reviews_df, label)
+    remove_special_characters(reviews_df, label)
+    remove_stopwords(reviews_df, label)
+    remove_whitespaces(reviews_df, label)
+    remove_punctuation(reviews_df, label)
+    remove_numbers(reviews_df, label)
+    lower_case(reviews_df, label)
+    remove_repeated_punctuation(reviews_df, label)
+    remove_emoji(reviews_df, label)
+    filter_english_language(reviews_df, label)
+    is_english(text)
+    nlp(text)
+    spell_check(text)
+    """
     nlp = spacy.load("en_core_web_sm")
     spell = SpellChecker(distance=2)
 
     @staticmethod
-    def is_english(text):
+    def is_english(text: str) -> bool:
+        """
+        Check if the text is in english
+
+        Parameters
+        ----------
+        text : str
+            text to check
+
+        Returns
+        -------
+        bool
+            True if the text is in english, False otherwise
+        """
         if not text:
             return False
 
         word_list = text.split(' ')
         if not word_list:
-            return word_list
+            return False
 
         # find those words that may be misspelled
         misspelled = NlpService.spell.unknown(word_list)
@@ -32,40 +71,139 @@ class NlpService:
         return True
 
     @staticmethod
-    def lower_case(reviews_df, label):
-        reviews_df[label] = reviews_df[label].str.lower()
+    def lower_case(reviews_df: DataFrame, label: str) -> DataFrame:
+        """
+        Lower case the text
+
+        Parameters
+        ----------
+        reviews_df : DataFrame
+            reviews dataframe
+        label : str
+
+        Returns
+        -------
+        DataFrame
+            reviews dataframe
+        """
+        reviews_df.loc[:, label] = reviews_df[label].str.lower()
         return reviews_df
 
     @staticmethod
-    def remove_punctuation(reviews_df, label):
-        reviews_df[label] = reviews_df[label].str.replace(string.punctuation, '')
+    def remove_punctuation(reviews_df: DataFrame, label: str) -> DataFrame:
+        """
+        Remove punctuation from the text
+
+        Parameters
+        ----------
+        reviews_df : DataFrame
+            reviews dataframe
+        label : str
+
+        Returns
+        -------
+        DataFrame
+            reviews dataframe
+        """
+        reviews_df.loc[:, label] = reviews_df[label].str.replace(string.punctuation, '')
         return reviews_df
 
     @staticmethod
-    def remove_numbers(reviews_df, label):
-        reviews_df[label] = reviews_df[label].str.replace('\d+', '')
+    def remove_numbers(reviews_df, label) -> DataFrame:
+        """
+        Remove numbers from the text
+
+        Parameters
+        ----------
+        reviews_df : DataFrame
+            reviews dataframe
+        label : str
+
+        Returns
+        -------
+        DataFrame
+            reviews dataframe
+        """
+        reviews_df.loc[:, label] = reviews_df[label].str.replace(r'\d+', '', regex=True)
         return reviews_df
 
     @staticmethod
-    def remove_whitespaces(reviews_df, label):
-        reviews_df[label] = reviews_df[label].str.strip()
+    def remove_whitespaces(reviews_df: DataFrame, label: str) -> DataFrame:
+        """
+        Remove whitespaces from the text
+
+        Parameters
+        ----------
+        reviews_df : DataFrame
+            reviews dataframe
+        label : str
+
+        Returns
+        -------
+        DataFrame
+            reviews dataframe
+        """
+        reviews_df.loc[:, label] = reviews_df[label].str.strip()
         return reviews_df
 
     @staticmethod
-    def remove_repeated_punctuation(reviews_df, label):
-        reviews_df[label] = reviews_df[label].str.replace(r'(.)\1+', r'\1\1')
-        reviews_df[label] = reviews_df[label].str.replace(r'!', r'')
-        reviews_df[label] = reviews_df[label].str.replace(r'(\n|\r)', r'')
+    def remove_repeated_punctuation(reviews_df: DataFrame, label: str) -> DataFrame:
+        """
+        Remove repeated punctuation from the text
+
+        Parameters
+        ----------
+        reviews_df : DataFrame
+            reviews dataframe
+        label : str
+
+        Returns
+        -------
+        DataFrame
+            reviews dataframe
+        """
+        reviews_df.loc[:, label] = reviews_df[label].str.replace(r'(.)\1+', r'\1\1', regex=True)
+        reviews_df.loc[:, label] = reviews_df[label].str.replace(r'!', r'', regex=True)
+        reviews_df.loc[:, label] = reviews_df[label].str.replace(r'(\n|\r)', r'', regex=True)
+        reviews_df.loc[:, label] = reviews_df[label].str.replace(r'(,)+', r'\1', regex=True)
         return reviews_df
 
     @staticmethod
-    def remove_emoji(reviews_df, label):
-        reviews_df[label] = reviews_df[label].apply(
+    def remove_emoji(reviews_df: DataFrame, label: str) -> DataFrame:
+        """
+        Remove emoji from the text
+
+        Parameters
+        ----------
+        reviews_df : DataFrame
+            reviews dataframe
+        label : str
+
+        Returns
+        -------
+        DataFrame
+            reviews dataframe
+        """
+        reviews_df.loc[:, label] = reviews_df[label].apply(
             lambda x: emoji.replace_emoji(x, replace=''))
         return reviews_df
 
     @staticmethod
-    def remove_emoticon_and_symbol(reviews_df, label):
+    def remove_emoticon_and_symbol(reviews_df: DataFrame, label: str) -> DataFrame:
+        """
+        Remove emoticon and symbol from the text
+
+        Parameters
+        ----------
+        reviews_df : DataFrame
+            reviews dataframe
+        label : str
+
+        Returns
+        -------
+        DataFrame
+            reviews dataframe
+        """
         def removal_func(text):
             emoticon_pattern = re.compile("["
                                           u"\U0001F600-\U0001F64F"  # emoticons
@@ -89,19 +227,31 @@ class NlpService:
                                           "]+", flags=re.UNICODE)
             return emoticon_pattern.sub(r'', text)
 
-        reviews_df[label] = reviews_df[label].apply(removal_func)
+        reviews_df.loc[:, label] = reviews_df[label].apply(removal_func)
         return reviews_df
 
     @staticmethod
-    def remove_special_characters(reviews_df, label):
+    def remove_special_characters(reviews_df: DataFrame, label: str) -> DataFrame:
+        """
+        Remove special characters from the text
+
+        Parameters
+        ----------
+        reviews_df : DataFrame
+            reviews dataframe
+        label : str
+
+        Returns
+        -------
+        DataFrame
+            reviews dataframe
+        """
         # remove_tags_url_email
         # remove_stopwords
-        # get word lemma
         # spell check
-        reviews_df[label] = DataFrameParallel(
-            reviews_df, n_cores=3)[label].apply(NlpService.nlp)
-        reviews_df[label] = reviews_df[label].apply(
-            lambda x: ' '.join([token.lemma_
+        reviews_df.loc[:, label] = reviews_df[label].apply(NlpService.nlp)
+        reviews_df.loc[:, label] = reviews_df[label].apply(
+            lambda x: ' '.join([token.text
                                 for token in x
                                 if not token.is_stop and
                                 not token.like_email and
@@ -110,68 +260,93 @@ class NlpService:
         return reviews_df
 
     @staticmethod
-    def filter_english_language(reviews_df, label):
+    def filter_english_language(reviews_df: DataFrame, label: str) -> DataFrame:
+        """
+        Filter reviews in english
+
+        Parameters
+        ----------
+        reviews_df : DataFrame
+            reviews dataframe
+        label : str
+
+        Returns
+        -------
+        DataFrame
+            reviews dataframe
+        """
         reviews_df = reviews_df[reviews_df[label].apply(NlpService.is_english)]
         return reviews_df
 
     @staticmethod
-    def preprocess_reviews(rev_df):
+    def _preprocess_reviews(rev_df: DataFrame) -> DataFrame:
+        """
+        Preprocess reviews
+
+        Parameters
+        ----------
+        rev_df : DataFrame
+            reviews dataframe
+
+        Returns
+        -------
+        DataFrame
+            reviews dataframe
+        """
         # Remove punctuations
-        print("Removed punctuations\n")
+        logger.info("Remove punctuations")
         rev_df = NlpService.remove_punctuation(rev_df, 'comments')
 
         # Remove numbers
-        print("Removed numbers\n")
+        logger.info("Remove numbers")
         rev_df = NlpService.remove_numbers(rev_df, 'comments')
 
         # Remove repeated characters
-        print("Removed repeated characters\n")
+        logger.info("Remove repeated characters")
         rev_df = NlpService.remove_repeated_punctuation(rev_df, 'comments')
 
         # Remove emoticons & symbols
-        print("Removed emoticons and symbols\n")
+        logger.info("Remove emoticons and symbols")
         rev_df = NlpService.remove_emoticon_and_symbol(rev_df, 'comments')
 
         # Remove tags
-        print("Removed special characters\n")
+        logger.info("Token filter")
         rev_df = NlpService.remove_special_characters(rev_df, 'comments')
 
         # Remove whitespaces
-        print("Removed whitespaces\n")
+        logger.info("Remove whitespaces")
         rev_df = NlpService.remove_whitespaces(rev_df, 'comments')
 
+        # Remove repeated characters
+        logger.info("Remove repeated characters")
+        rev_df = NlpService.remove_repeated_punctuation(rev_df, 'comments')
+
         # Lower case comments
-        print("Lowered case\n")
+        logger.info("Lowered case")
         rev_df = NlpService.lower_case(rev_df, 'comments')
 
         return rev_df
 
     @staticmethod
-    def process_reviews(reviews_df, parent=0, save=False):
-        reviews = reviews_df['comments']
-        review_lengths = reviews.str.len()
-        # plt.figure(figsize=(8, 6))
-        # plt.scatter(reviews, review_lengths, color='blue')
-        # plt.xlabel('Review')
-        # plt.ylabel('Review Length')
-        # plt.title('Relationship between Reviews and their Lengths')
-        # plt.xticks(rotation=45, ha='right')
-        # plt.tight_layout()
-        # plt.show()
-        # select reviews with less than 140 - 190 characters
-        reviews_df = reviews_df[(180 < review_lengths) & (review_lengths <= 190)]
+    def process_reviews(reviews_df: DataFrame) -> DataFrame:
+        """
+        Preprocess reviews
 
+        Parameters
+        ----------
+        reviews_df : DataFrame
+            reviews dataframe
+
+        Returns
+        -------
+        DataFrame
+            reviews dataframe
+        """
         # filter in language
-        print("Filter comments in english\n")
+        logger.info("Filter comments in english")
         reviews_df = NlpService.filter_english_language(reviews_df, 'comments')
 
         # Preprocess reviews
-        reviews_df = NlpService.preprocess_reviews(reviews_df)
-
-        # Save preprocessed reviews
-        if save:
-            reviews_df.to_csv(
-                Path.cwd().parents[parent].joinpath(
-                    "data/processed", "neighborhood_reviews.csv.gz"), index=False, compression='gzip')
+        reviews_df = NlpService._preprocess_reviews(reviews_df)
 
         return reviews_df
