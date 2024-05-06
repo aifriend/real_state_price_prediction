@@ -1,5 +1,9 @@
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
+# -*- coding: utf-8 -*-
+import logging
+from pathlib import Path
+
+import click
+from dotenv import find_dotenv, load_dotenv
 
 from src.listing_etl_pipeline import process_full_listings
 from src.review_etl_pipeline import process_full_reviews
@@ -7,56 +11,28 @@ from src.service.RentalLogger import logger
 from src.service.TrainService import TrainService
 
 
-def pre_process_for_training(df):
-    # Drop meaningless columns
-    df.drop(columns=['street', 'neighbourhood_cleansed',
-                     'neighbourhood_group_cleansed', 'city',
-                     ],
-            inplace=True)
+def train_price_model(output_filepath: str, root_dir: Path, parent: int = 0, optimization=False) -> None:
+    """
+    Train price model
 
-    # Convert objects columns to category if necessary
-    # The categorical features have to be converted internally to numerical features for efficient modeling
-    label_encoder = LabelEncoder()
-    column_list = df.select_dtypes(exclude=['int', 'float']).columns
-    for column in column_list:
-        df[column] = df[column].astype("category")
-        # Apply LabelEncoder to the categorical column
-        encoded_categories = label_encoder.fit_transform(df[column])
-        category_mapping = dict(zip(df[column], encoded_categories))
-        df[column] = encoded_categories
-        logger.info(f"{column} ==> "
-                    f"Apply label encoder with label "
-                    f"{category_mapping}")
+    Args:
+        output_filepath: str
+        root_dir: Path
+        parent: int
+        optimization: bool
 
-    return df
+    Returns:
+        None
+    """
+    # load data
+    listing_df = process_full_listings(
+        store_path=output_filepath, cached=True, parent=parent)
 
-
-def train_price_model(optimization=False):
-    listing_df = process_full_listings(parent=1)
-
-    train_df = pre_process_for_training(listing_df)
-
-    # drop less significance features
-    train_df.drop(
-        columns=train_df.columns[
-            [1, 2, 7, 11, 12, 13, 15, 17, 18, 19, 20,
-             23, 27, 28, 29, 30, 31, 34, 36, 37, 38,
-             39, 40, 41, 42, 43, 47, 49, 50, 51]], inplace=True)
-
-    # X and y dataset preparation
-    Xtr, Xts, ytr, yts = TrainService.TrainSampleModel(train_df)
-
-    # X = train_df.drop(['price'], axis=1).values
-    # y = train_df['price'].values
-    # logger.info(X.shape)
-    # logger.info(y.shape)
-    #
-    # # Split the data into training and testing sets
-    # Xtr, Xts, ytr, yts = train_test_split(
-    #     X, y, test_size=0.3, random_state=42)
+    # pre-processing for training
+    Xtr, Xts, ytr, yts = TrainService.pre_process_for(listing_df)
 
     # Train
-    xgb, resc_x_tr = TrainService.train(Xtr, Xts, ytr, yts)
+    xgb, resc_x_tr = TrainService.train(Xtr, Xts, ytr, yts, root_dir)
 
     # Tuning
     b_model = None
@@ -69,23 +45,30 @@ def train_price_model(optimization=False):
     return xgb if xgb else b_model
 
 
-def train_reviews_by_score(parent=1):
-    # Load listings reviews
-    reviews_df = process_full_reviews(parent=1)
+@click.command()
+@click.argument('output_filepath', type=click.Path())
+def main(output_filepath):
+    logger = logging.getLogger(__name__)
+    logger.info('Training models...')
 
-    # Train
-    TrainService.train_reviews_by_score(reviews_df, parent)
+    train_price_model(output_filepath, project_dir, parent=1)
 
+    review_df = process_full_reviews(
+        store_path=output_filepath, cached=True, parent=1)
 
-def train_review_sentiment_analysis():
-    # Load listings reviews
-    reviews_df = process_full_reviews(parent=1)
-
-    # Train
-    TrainService.train_review_sentiment_analysis(reviews_df, parent=1)
+    TrainService.train_reviews_by_score(review_df, project_dir, parent=1)
+    TrainService.train_review_sentiment_analysis(review_df, project_dir, parent=1)
 
 
 if __name__ == '__main__':
-    # train_price_model()
-    # train_reviews_by_score()
-    train_review_sentiment_analysis()
+    log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    logging.basicConfig(level=logging.INFO, format=log_fmt)
+
+    # not used in this stub but often useful for finding various files
+    project_dir = Path(__file__).resolve().parents[2]
+
+    # find .env automagically by walking up directories until it's found, then
+    # load up the .env entries as environment variables
+    load_dotenv(find_dotenv())
+
+    main()

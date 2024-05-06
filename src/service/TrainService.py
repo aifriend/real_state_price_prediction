@@ -1,4 +1,5 @@
-from typing import List
+from pathlib import Path
+from typing import List, Any
 
 import numpy as np
 import seaborn as sns
@@ -14,6 +15,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.metrics import silhouette_score
 from sklearn.model_selection import GridSearchCV, KFold
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeRegressor
 from xgboost import XGBRegressor
@@ -26,20 +28,99 @@ from src.service.RentalLogger import logger
 class TrainService:
 
     @staticmethod
-    def TrainSampleModel(train_df):
+    def rmse(model: object, y_true: List, y_pred: List) -> float:
         """
-        Train Sample Model
+        Calculate the Root Mean Squared Error (RMSE) between the true and predicted values.
 
         Args:
-            train_df (DataFrame): train dataframe
+            model: object
+            y_true (array-like): True values.
+            y_pred (array-like): Predicted values.
 
         Returns:
-            Xtr, Xts, ytr, yts (np.ndarray): Xtr, Xts, ytr, yts
+            float: RMSE value.
         """
+        result = np.sqrt(mean_squared_error(y_true, y_pred))
+        logger.info(f"{model.__class__.__name__} Root Mean Squared Error (RMSE): {result}")
+        return result
+
+    @staticmethod
+    def mape(model: object, y_true: List, y_pred: List) -> float:
+        """
+        Calculate the Mean Absolute Percentage Error (MAPE) between the true and predicted values.
+
+        Args:
+            model: object
+            y_true (array-like): True values.
+            y_pred (array-like): Predicted values.
+
+        Returns:
+            float: MAPE value.
+        """
+        y_true, y_pred = np.array(y_true), np.array(y_pred)
+        result = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+        logger.info(f"{model.__class__.__name__} Mean Absolute Percentage Error (MAPE): {result}")
+        return result
+
+    @staticmethod
+    def r2(model: object, y_true: List, y_pred: List) -> float:
+        """
+        Calculate the R-squared (R²) value between the true and predicted values.
+
+        Args:
+            model: object
+            y_true (array-like): True values.
+            y_pred (array-like): Predicted values.
+
+        Returns:
+            float: R-squared value.
+        """
+        result = r2_score(y_true, y_pred)
+        logger.info(f"{model.__class__.__name__} R-squared (R²): {result}")
+        return result
+
+    @staticmethod
+    def pre_process_for(df: DataFrame) -> Any:
+        """
+        Pre-process
+
+        Args:
+            df: DataFrame
+
+        Returns:
+            Any
+        """
+        # Drop meaningless columns
+        df.drop(columns=['street', 'neighbourhood_cleansed',
+                         'neighbourhood_group_cleansed', 'city',
+                         ],
+                inplace=True)
+
+        # Convert objects columns to category if necessary
+        # The categorical features have to be converted internally to
+        # numerical features for efficient modeling
+        label_encoder = LabelEncoder()
+        column_list = df.select_dtypes(exclude=['int', 'float']).columns
+        for column in column_list:
+            df[column] = df[column].astype("category")
+            # Apply LabelEncoder to the categorical column
+            encoded_categories = label_encoder.fit_transform(df[column])
+            category_mapping = dict(zip(df[column], encoded_categories))
+            df[column] = encoded_categories
+            logger.info(f"{column} ==> "
+                        f"Apply label encoder with label "
+                        f"{category_mapping}")
+
+        # drop less significance features
+        df.drop(
+            columns=df.columns[
+                [1, 7, 11, 12, 13, 15, 17, 18, 19, 20,
+                 23, 27, 28, 29, 30, 31, 34, 36, 37, 38,
+                 39, 40, 41, 42, 43, 47, 49, 50, 51]], inplace=True)
 
         # X and y
-        X = train_df.drop(['price'], axis=1).values
-        y = train_df['price'].values
+        X = df.drop(['price'], axis=1).values
+        y = df['price'].values
         logger.info(X.shape)
         logger.info(y.shape)
 
@@ -51,7 +132,7 @@ class TrainService:
 
     # Train
     @staticmethod
-    def train_review_sentiment_analysis(rev_df: DataFrame, parent: int = 0) -> None:
+    def train_review_sentiment_analysis(rev_df: DataFrame, project_dir: Path, parent: int = 0) -> None:
         """
         In this method, I perform sentiment analysis on the reviews with these steps:
         1) We have a list of review texts without any sentiment labels.
@@ -68,6 +149,7 @@ class TrainService:
 
         Args:
             rev_df: reviews dataframe
+            project_dir: project directory
             parent: parent id
 
         Returns:
@@ -82,7 +164,7 @@ class TrainService:
         model = Word2Vec(
             tokenized_reviews, vector_size=10000, window=5, min_count=1, workers=4)
         DataService.save_model(
-            model, parent=parent, apex='train_review_sentiment_analysis')
+            model, project_dir, parent=parent, apex='review_train_sentiment_analysis')
 
         # Generate review embeddings by averaging word embeddings
         review_embeddings = []
@@ -101,9 +183,10 @@ class TrainService:
         logger.info(f"Silhouette Score: {silhouette_avg:.2f}")
 
         # Print the reviews and their assigned cluster labels
-        for review, label in zip(reviews, cluster_labels)[:5]:
+        for review, label in zip(reviews, cluster_labels):
             logger.info(f"Review: {review}")
             logger.info(f"Cluster Label: {label}")
+            break
 
         # Predict the cluster for a new review
         new_review = "The room was spacious and clean, but the staff was rude."
@@ -115,7 +198,8 @@ class TrainService:
         logger.info(f"Predicted Cluster: {new_review_cluster}")
 
     @staticmethod
-    def train_reviews_by_score(rev_df, parent) -> (LogisticRegression, EmbeddingService, List, List):
+    def train_reviews_by_score(rev_df: DataFrame, project_dir: Path, parent: int = 0) -> (
+            LogisticRegression, EmbeddingService, List, List):
         """
         The following code is used for text clustering and documents embedding. We want to represent reviews
         as vectors representation to be able to apply clustering algorithms to detect topics. Reviews are
@@ -128,6 +212,7 @@ class TrainService:
 
         Args:
             rev_df: reviews dataframe
+            project_dir: project directory
             parent: parent id
 
         Returns:
@@ -150,7 +235,7 @@ class TrainService:
         classifier = LogisticRegression()
         classifier.fit(X_train, y_train)
         DataService.save_model(
-            classifier, parent, apex='train_reviews_by_score')
+            classifier, project_dir, parent, apex='review_train_score_str')
 
         return classifier, emb_service, X_test, y_test
 
@@ -158,15 +243,14 @@ class TrainService:
     def xgboost_tuning(X_train, y_train) -> (XGBRegressor, float, float):
         """
         The chosen model was an XGBoost regression model with the following hyperparameters:
-        Best hyperparameters:  {
-            'colsample_bytree': 1.0,
-            'gamma': 0,
-            'learning_rate': 0.1,
-            'max_depth': 5,
-            'min_child_weight': 3,
-            'n_estimators': 400,
-            'subsample': 0.9
-        }
+        Best hyperparameters:
+        colsample_bytree: 1.0
+        gamma: 0
+        learning_rate: 0.1
+        max_depth: 5
+        min_child_weight: 3
+        n_estimators: 400
+        subsample: 0.9
 
         Args:
             X_train: training data
@@ -236,7 +320,7 @@ class TrainService:
         return best_model, best_score, best_param
 
     @staticmethod
-    def train(X_train, X_test, y_train, y_test) -> (XGBRegressor, List):
+    def train(X_train, X_test, y_train, y_test, project_dir: Path) -> (XGBRegressor, List):
         """
         Train the model
 
@@ -257,60 +341,12 @@ class TrainService:
             X_test: test data
             y_train: training labels
             y_test: test labels
+            project_dir: project directory
 
         Returns:
             XGBRegressor: trained model
             List: list of X values for training
         """
-
-        def rmse(model: object, y_true: List, y_pred: List) -> float:
-            """
-            Calculate the Root Mean Squared Error (RMSE) between the true and predicted values.
-
-            Args:
-                model: object
-                y_true (array-like): True values.
-                y_pred (array-like): Predicted values.
-
-            Returns:
-                float: RMSE value.
-            """
-            result = np.sqrt(mean_squared_error(y_true, y_pred))
-            logger.info(f"{model.__class__.__name__} Root Mean Squared Error (RMSE): {result}")
-            return result
-
-        def mape(model: object, y_true: List, y_pred: List) -> float:
-            """
-            Calculate the Mean Absolute Percentage Error (MAPE) between the true and predicted values.
-
-            Args:
-                model: object
-                y_true (array-like): True values.
-                y_pred (array-like): Predicted values.
-
-            Returns:
-                float: MAPE value.
-            """
-            y_true, y_pred = np.array(y_true), np.array(y_pred)
-            result = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
-            logger.info(f"{model.__class__.__name__} Mean Absolute Percentage Error (MAPE): {result}")
-            return result
-
-        def r2(model: object, y_true: List, y_pred: List) -> float:
-            """
-            Calculate the R-squared (R²) value between the true and predicted values.
-
-            Args:
-                model: object
-                y_true (array-like): True values.
-                y_pred (array-like): Predicted values.
-
-            Returns:
-                float: R-squared value.
-            """
-            result = r2_score(y_true, y_pred)
-            logger.info(f"{model.__class__.__name__} R-squared (R²): {result}")
-            return result
 
         # feature Scaling
         scaler = StandardScaler()
@@ -325,19 +361,19 @@ class TrainService:
         lr = LinearRegression()
         lr.fit(rescaled_x_train, y_train)
         y_pred_lr = lr.predict(rescaled_x_test)
-        rmse(lr, y_test, y_pred_lr)
-        mape(lr, y_test, y_pred_lr)
-        r2(lr, y_test, y_pred_lr)
-        DataService.save_model(lr, parent=1, apex='price_train')
+        TrainService.rmse(lr, y_test, y_pred_lr)
+        TrainService.mape(lr, y_test, y_pred_lr)
+        TrainService.r2(lr, y_test, y_pred_lr)
+        DataService.save_model(lr, project_dir, parent=1, apex='price_train')
 
         # Decision Tree
         tree = DecisionTreeRegressor(min_samples_split=30, max_depth=10)
         tree.fit(rescaled_x_train, y_train)
         y_pred_tree = tree.predict(rescaled_x_test)
-        rmse(tree, y_test, y_pred_tree)
-        mape(tree, y_test, y_pred_tree)
-        r2(tree, y_test, y_pred_tree)
-        DataService.save_model(tree, parent=1, apex='price_train')
+        TrainService.rmse(tree, y_test, y_pred_tree)
+        TrainService.mape(tree, y_test, y_pred_tree)
+        TrainService.r2(tree, y_test, y_pred_tree)
+        DataService.save_model(tree, project_dir, parent=1, apex='price_train')
 
         # Xgboost
         xgb = XGBRegressor(
@@ -351,36 +387,36 @@ class TrainService:
             n_jobs=-1)
         xgb.fit(rescaled_x_train, y_train)
         y_pred_xgb = xgb.predict(rescaled_x_test)
-        rmse(xgb, y_test, y_pred_xgb)
-        mape(xgb, y_test, y_pred_xgb)
-        r2(xgb, y_test, y_pred_xgb)
-        DataService.save_model(xgb, parent=1, apex='price_train')
+        TrainService.rmse(xgb, y_test, y_pred_xgb)
+        TrainService.mape(xgb, y_test, y_pred_xgb)
+        TrainService.r2(xgb, y_test, y_pred_xgb)
+        DataService.save_model(xgb, project_dir, parent=1, apex='price_train')
 
         # Gradient Boosting
         boost = GradientBoostingRegressor(
             n_estimators=300, min_samples_split=20)
         boost.fit(rescaled_x_train, y_train)
         y_pred_boost = boost.predict(rescaled_x_test)
-        rmse(boost, y_test, y_pred_boost)
-        mape(boost, y_test, y_pred_boost)
-        r2(boost, y_test, y_pred_boost)
-        DataService.save_model(boost, parent=1, apex='price_train')
+        TrainService.rmse(boost, y_test, y_pred_boost)
+        TrainService.mape(boost, y_test, y_pred_boost)
+        TrainService.r2(boost, y_test, y_pred_boost)
+        DataService.save_model(boost, project_dir, parent=1, apex='price_train')
 
         # Random Forest
         forest = RandomForestRegressor(
             n_estimators=300, max_depth=10, min_samples_split=30, n_jobs=-1, random_state=0)
         forest.fit(rescaled_x_train, y_train)
         y_pred_forest = forest.predict(rescaled_x_test)
-        rmse(forest, y_test, y_pred_forest)
-        mape(forest, y_test, y_pred_forest)
-        r2(forest, y_test, y_pred_forest)
-        DataService.save_model(forest, parent=1, apex='price_train')
+        TrainService.rmse(forest, y_test, y_pred_forest)
+        TrainService.mape(forest, y_test, y_pred_forest)
+        TrainService.r2(forest, y_test, y_pred_forest)
+        DataService.save_model(forest, project_dir, parent=1, apex='price_train')
 
         # Feature importance
         # Plot feature importance
         importance = forest.feature_importances_
-        for i, v in enumerate(importance):
-            logger.info('feature: %d, score: %.5f' % (i, v))
+        # for i, v in enumerate(importance):
+        #     logger.info('feature: %d, score: %.5f' % (i, v))
         sns.set()
         plt.bar([x for x in range(len(importance))], importance)
         plt.title("A barplot showing the significance of each feature")

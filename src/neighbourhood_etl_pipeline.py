@@ -82,12 +82,16 @@ def get_geodata_map(df) -> None:
 
 
 if __name__ == '__main__':
+    parent = 0
+
     # geometry_col = gpd.read_file(
     #     Path.cwd().parents[0].joinpath(
     #         "data/raw", "neighbourhoods.geojson"))
     # get_geodata_map(geometry_col)
 
     # process full listing
-    rentals_df = process_full_listings()
-    rentals_df = avg_price_per_sqft(
-        rentals_df, 'price', 'square_feet')
+    listing_df = process_full_listings(
+        store_path='data/processed', cached=True, parent=parent)
+
+    listing_df = avg_price_per_sqft(
+        listing_df, 'price', 'square_feet')

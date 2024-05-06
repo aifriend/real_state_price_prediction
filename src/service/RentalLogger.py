@@ -1,6 +1,11 @@
 # Create a logger
 import logging
+import sys
 from pathlib import Path
+
+# Add project root to sys.path
+project_directory = Path(__file__).resolve().parents[1].parent
+sys.path.insert(0, str(project_directory))
 
 logger = logging.getLogger('rLogger')
 logger.setLevel(logging.INFO)

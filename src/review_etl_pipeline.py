@@ -82,8 +82,8 @@ def get_full_reviews(data_path: str) -> DataFrame:
 
 
 def process_full_reviews(
-        data_path: str ='data/interim',
-        store_path: str ='data/processed',
+        data_path: str = 'data/interim',
+        store_path: str = 'data/processed',
         verbose: bool = False,
         cached: bool = True,
         parent: int = 0):
@@ -110,7 +110,8 @@ def process_full_reviews(
                              f"{Path.cwd().parents[parent].joinpath(store_path, 'reviews.csv.gz')}")
 
     # get full listing
-    listings_df = process_full_listings()
+    listings_df = process_full_listings(
+        data_path=data_path, store_path=store_path, parent=parent)
 
     # get full reviews
     if not Path.cwd().parents[parent].joinpath(data_path, "reviews.csv.gz").exists():
@@ -129,7 +130,8 @@ def process_full_reviews(
     # random sampling
     reviews_listings_df = reviews_listings_df[(reviews_listings_df['comments'].str.len() > 100)]
     reviews_listings_df = reviews_listings_df[(reviews_listings_df['comments'].str.len() < 200)]
-    reviews_listings_df = reviews_listings_df.sample(50000)  # TODO: remove
+    # sampling
+    reviews_listings_df = reviews_listings_df.sample(50000)  # TODO: optimization
 
     logger.info(f"Process {len(reviews_listings_df)} reviews...")
     merged_df = NlpService.process_reviews(reviews_listings_df)
@@ -161,4 +163,5 @@ if __name__ == '__main__':
     review_df.to_csv(review_path, index=False, compression="gzip")
 
     # process full listing
-    process_full_reviews(verbose=True, cached=False)
+    process_full_reviews(
+        data_path='data/interim', verbose=True, cached=False)

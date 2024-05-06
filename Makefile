@@ -30,7 +30,22 @@ requirements: test_environment
 ## Make Dataset
 data:
 	$(PYTHON_INTERPRETER) src/data/make_dataset.py $(PROJECT_DIR)/data/raw $(PROJECT_DIR)/data/interim
+
+## Make Features
+features:
 	$(PYTHON_INTERPRETER) src/features/build_features.py $(PROJECT_DIR)/data/interim $(PROJECT_DIR)/data/processed
+
+## Show Analysis
+analysis:
+	$(PYTHON_INTERPRETER) src/visualization/show_analysis.py $(PROJECT_DIR)/data/processed
+
+## Train
+train:
+	$(PYTHON_INTERPRETER) src/models/train_model.py $(PROJECT_DIR)/data/processed
+
+## prediction
+prediction:
+	$(PYTHON_INTERPRETER) src/models/predict_model.py $(PROJECT_DIR)/data/processed
 
 ## Delete all compiled Python files
 clean:
@@ -40,6 +55,10 @@ clean:
 ## Lint using flake8
 lint:
 	flake8 src
+
+## Tests
+test:
+	tox
 
 ## Set up python interpreter environment
 create_environment:

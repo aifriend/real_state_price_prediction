@@ -38,17 +38,21 @@ class EDA:
     """
 
     @staticmethod
-    def cluster_review_features() -> None:
+    def cluster_review_features(output_path: str) -> None:
         """
         Cluster review features based on TF-IDF scores
 
+        Args:
+            output_path (str): path to save the output
+
         Returns:
+            None
         """
         # Load pre-trained BERT model and tokenizer
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         model = BertModel.from_pretrained('bert-base-uncased')
 
-        def get_bert_embedding(text, b_model, b_tokenizer):
+        def get_bert_embedding(text, b_model, b_tokenizer) -> np.ndarray:
             """
             Generate BERT embedding for given text
 
@@ -56,33 +60,44 @@ class EDA:
                 text (str): text to be embedded
                 b_model (BertModel): pre-trained BERT model
                 b_tokenizer (BertTokenizer): pre-trained BERT tokenizer
+
+            Returns:
+                embedding (numpy.ndarray): BERT embedding
             """
             inputs = b_tokenizer(text, return_tensors="pt", padding=True, truncation=True)
             outputs = b_model(**inputs)
             last_hidden_states = outputs.last_hidden_state
             return last_hidden_states[:, 0, :].detach().numpy()
 
-        def contains_nan(my_list):
+        def contains_nan(my_list) -> bool:
             """
             Check if a list contains NaN values
 
             Args:
                 my_list (list): list to be checked
+
+            Returns:
+                bool
             """
             for item in my_list:
                 if isinstance(item, float) and math.isnan(item):
                     return True
             return False
 
-        def cluster_listings(num_clusters=5):
+        def cluster_listings(num_clusters: int, store_path: str) -> None:
             """
             Cluster rental listings based on review embeddings
 
             Args:
                 num_clusters (int): number of clusters to be generated
+                store_path (str): path to store clustering results
+
+            Returns:
+                None
             """
             logger.info("Load listings reviews")
-            reviews_listings_df = process_full_reviews(parent=1)
+            reviews_listings_df = process_full_reviews(
+                store_path=store_path, cached=True, parent=1)
 
             # all listings
             # reviews_listings_df = reviews_listings_df.loc[:1000, :]
@@ -125,13 +140,16 @@ class EDA:
 
             return cluster_labels
 
-        def get_top_terms(reviews, n=7):
+        def get_top_terms(reviews, n=7) -> list:
             """
             Get top N terms based on TF-IDF scores
 
             Args:
                 reviews (list): list of reviews
                 n (int): number of top terms to be returned
+
+            Returns:
+                top_terms (list): list of top terms
             """
             vectorizer = TfidfVectorizer()
             tfidf = vectorizer.fit_transform(reviews)
@@ -144,12 +162,12 @@ class EDA:
             top_terms = top_terms.most_common(n)
             return top_terms
 
-        cluster_listings(num_clusters=5)
+        cluster_listings(5, output_path)
 
     @staticmethod
     def feature_correlation_analysis(df: DataFrame) -> None:
         """
-        visualizing the correlation of the features
+        Visualizing the correlation of the features
 
         Shows relations between these features:
         -bathrooms
@@ -160,10 +178,11 @@ class EDA:
         -minimum_minimum_nights
         -maximum_minimum_nights
 
-        Also, relation between host_listing_count and availabilities
-
         Args:
             df (pd.DataFrame): dataframe containing the features
+
+        Returns:
+            None
         """
         # Select numerical columns
         numerical_columns = df.select_dtypes(include=['int', 'float'])
@@ -180,9 +199,6 @@ class EDA:
         plt.figure(figsize=(30, 12))
         plt.title("A heatmap showing correlation between the features")
         sns.heatmap(c.corr(), annot=True)
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "heatmap.png"))
         plt.show()
 
     @staticmethod
@@ -192,6 +208,9 @@ class EDA:
 
         Args:
             df (pd.DataFrame): dataframe containing the features
+
+        Returns:
+            None
         """
 
         # Analyze the relationship between price and neighborhood
@@ -201,9 +220,6 @@ class EDA:
         plt.ylabel('Price')
         plt.xticks(rotation=45)
         sns.boxplot(data=df, x='neighbourhood_group', y='price')
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "neighborhood_by_price_box_plot.png"))
         plt.show()
 
         # It provides a more detailed view of the price ranges and the density of listings at different price points
@@ -213,9 +229,6 @@ class EDA:
         plt.ylabel('Price')
         sns.violinplot(data=df, x='neighbourhood_group', y='price')
         plt.xticks(rotation=45)
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "neighborhood_by_price_violin.png"))
         plt.show()
 
         # This will provide an overview of the average, median, minimum, and maximum prices for each neighborhood
@@ -239,9 +252,6 @@ class EDA:
         plt.title('Correlation Heatmap')
         sns.heatmap(df[['price', 'minimum_nights', 'number_of_reviews',
                         'reviews_per_month', 'availability_365']].corr(), annot=True, cmap='coolwarm')
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "heatmap_reduced.png"))
         plt.show()
 
         # Analyze the top neighborhoods by average price
@@ -264,60 +274,31 @@ class EDA:
         plt.ylabel('Count')
         plt.xticks(rotation=45)
         sns.countplot(data=df, x='neighbourhood_cleansed', order=df['neighbourhood_cleansed'].value_counts().index)
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "listings_by_neighborhood.png"))
         plt.show()
-
-        """
-        Read the property data into a GeoDataFrame        
-        """
-        property_gdf = gpd.read_file(
-            Path.cwd().parents[1].joinpath(
-                "data/raw", "neighbourhoods.geojson"))
-        # Get the center coordinates of the property locations
-        center_lat = property_gdf.geometry.centroid.y.mean()
-        center_lon = property_gdf.geometry.centroid.x.mean()
-        # Create a Folium map centered on the mean coordinates
-        map_center = [center_lat, center_lon]
-        map_zoom = 12
-        folium_map = folium.Map(location=map_center, zoom_start=map_zoom)
-        # Add property locations as markers to the map
-        for idx, row in property_gdf.iterrows():
-            location = [row.geometry.centroid.y, row.geometry.centroid.x]
-            popup_text = (f"Property Neighbourhood Location: {row['neighbourhood']}<br>"
-                          f"Property Neighbourhood Area: {row['neighbourhood_group']}")
-            folium.Marker(location=location, popup=popup_text).add_to(folium_map)
-        # Save the map to an HTML file
-        folium_map.save(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "property_map.html"))
 
     @staticmethod
     def review_analysis(listings_df: DataFrame) -> None:
         """
-        Analyze the relationship between price and number of reviews
-
+        Analyze the relationship between price and number of reviews:
         - There is a weak positive correlation between the price of a listing and the number
         of reviews it has received.
         - This suggests that higher-priced listings tend to receive more reviews, possibly due to
         their popularity or quality.
-
         - The correlation coefficient ranges from -1 to 1, where values close to 1 indicate a strong positive
         correlation, values close to -1 indicate a strong negative correlation, and values close to 0 indicate
         a weak or no correlation.
 
         Args:
-            listings_df (DataFrame): The DataFrame containing the listings data.
+            listings_df (DataFrame): The DataFrame containing the listing data.
+
+        Returns:
+            None
         """
         plt.figure(figsize=(10, 6))
         plt.title('Price vs. Number of Reviews (scatter)')
         plt.xlabel('Number of Reviews')
         plt.ylabel('Price')
         sns.scatterplot(data=listings_df, x='number_of_reviews', y='price')
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "reviews_by_price.png"))
         plt.show()
 
         # Correlation analysis
@@ -340,9 +321,6 @@ class EDA:
         plt.xlabel('Review Category')
         plt.ylabel('Price')
         sns.boxplot(data=listings_df, x='review_category', y='price')
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "review_category_by_price.png"))
         plt.show()
 
         # Statistical tests
@@ -371,9 +349,6 @@ class EDA:
         plt.xlabel('Room Type')
         plt.ylabel('Number of Reviews')
         sns.boxplot(data=listings_df, x='room_type', y='number_of_reviews')
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "reviews_by_room_type.png"))
         plt.show()
 
         """
@@ -389,9 +364,6 @@ class EDA:
         plt.xlabel('Host Response Rate')
         plt.ylabel('Review Scores Rating')
         sns.scatterplot(data=listings_df, x='host_response_rate', y='review_scores_rating')
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "review_scores_vs_host_response_rate.png"))
         plt.show()
 
         """
@@ -403,9 +375,6 @@ class EDA:
         ax.set_xlabel('Review Length')
         ax.set_ylabel('Count')
         sns.histplot(data=listings_df, x='review_length', ax=ax, kde=True)
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "reviews_length.png"))
         plt.show()
 
         """
@@ -420,9 +389,6 @@ class EDA:
         ax.set_ylabel('Number of Reviews')
         plt.xticks(rotation=45)
         sns.lineplot(data=daily_reviews, x='date', y='count', ax=ax)
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "reviews_per_day.png"))
         plt.show()
 
         """
@@ -469,18 +435,19 @@ class EDA:
         plt.ylabel('t-SNE Dimension 2')
         plt.title(f'Clustering Results (Number of Clusters: {best_n_components})')
         plt.colorbar(label='Cluster')
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "reviews_cluster.png"))
         plt.show()
 
     @staticmethod
-    def feature_exploratory_analysis(df: DataFrame) -> None:
+    def feature_exploratory_analysis(df: DataFrame, output_path: str) -> None:
         """
         Visualize the distribution of rental prices
 
         Args:
             df (DataFrame): DataFrame containing rental data
+            output_path (str): path to save the plot
+
+        Returns:
+            None
         """
 
         """
@@ -496,9 +463,6 @@ class EDA:
         plt.xlabel('Price')
         plt.ylabel('Count')
         sns.histplot(data=df, x='price', kde=True)
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "rental_prices_distribution.png"))
         plt.show()
 
         """
@@ -513,9 +477,6 @@ class EDA:
         plt.xlabel('Room Type')
         plt.ylabel('Count')
         sns.countplot(data=df, x='room_type')
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "room_types_distribution.png"))
         plt.show()
 
         """
@@ -530,9 +491,6 @@ class EDA:
         plt.xlabel('Number of Available Days')
         plt.ylabel('Count')
         sns.histplot(data=df, x='availability_365', kde=True)
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "listings_availability.png"))
         plt.show()
 
         """
@@ -556,9 +514,6 @@ class EDA:
         plt.xticks(rotation=45)
         sns.boxplot(data=df, x='property_type', y='price',
                     order=df.groupby('property_type')['price'].median().sort_values(ascending=False).index)
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "property_type_by_price.png"))
         plt.show()
 
         """
@@ -587,9 +542,6 @@ class EDA:
         plt.ylabel('Price')
         sns.boxplot(data=df, x='host_response_time', y='price',
                     order=[3, 4, 1, 0])
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "host_response_time_by_price.png"))
         plt.show()
 
         """
@@ -605,15 +557,38 @@ class EDA:
         plt.ylabel('Count')
         plt.xticks(rotation=45)
         sns.countplot(data=df, x='property_type', order=df['property_type'].value_counts().index)
-        plt.savefig(
-            Path.cwd().parents[1].joinpath(
-                "reports/figures", "property_type_distribution.png"))
         plt.show()
 
         """
         Cluster rental listings based on review embeddings
         """
-        EDA.cluster_review_features()
+        EDA.cluster_review_features(output_path)
+
+    @staticmethod
+    def geomap() -> None:
+        """
+        Visualize the listings on a map. Read the property data into a GeoDataFrame
+        """
+        property_gdf = gpd.read_file(
+            Path.cwd().parents[1].joinpath(
+                "data/raw", "neighbourhoods.geojson"))
+        # Get the center coordinates of the property locations
+        center_lat = property_gdf.geometry.centroid.y.mean()
+        center_lon = property_gdf.geometry.centroid.x.mean()
+        # Create a Folium map centered on the mean coordinates
+        map_center = [center_lat, center_lon]
+        map_zoom = 12
+        folium_map = folium.Map(location=map_center, zoom_start=map_zoom)
+        # Add property locations as markers to the map
+        for idx, row in property_gdf.iterrows():
+            location = [row.geometry.centroid.y, row.geometry.centroid.x]
+            popup_text = (f"Property Neighbourhood Location: {row['neighbourhood']}<br>"
+                          f"Property Neighbourhood Area: {row['neighbourhood_group']}")
+            folium.Marker(location=location, popup=popup_text).add_to(folium_map)
+        # Save the map to an HTML file
+        folium_map.save(
+            Path.cwd().parents[1].joinpath(
+                "reports/figures", "property_map.html"))
 
 
 if __name__ == '__main__':
@@ -622,9 +597,10 @@ if __name__ == '__main__':
     the explanatory variables and the target variable.
     """
     dea_df = process_full_reviews(
-        data_path='../data/interim', store_path='../data/processed')
+        store_path='../data/processed', cached=True, verbose=False)
 
-    # EDA.feature_correlation_analysis(dea_df)
-    # EDA.feature_exploratory_analysis(dea_df)
-    # EDA.neighborhood_analysis(dea_df)
+    EDA.feature_correlation_analysis(dea_df)
+    EDA.feature_exploratory_analysis(dea_df, output_path='../data/processed')
+    EDA.neighborhood_analysis(dea_df)
     EDA.review_analysis(dea_df)
+    # EDA.geomap()

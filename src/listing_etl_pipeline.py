@@ -71,17 +71,21 @@ def get_full_listings(data_path: str = 'data/raw') -> DataFrame:
 def process_full_listings(
         data_path='data/interim',
         store_path='data/processed',
-        verbose: bool =False,
-        cached: bool =True,
-        parent: int =0) -> DataFrame:
+        verbose: bool = False,
+        cached: bool = True,
+        parent: int = 0) -> DataFrame:
     """
     Process full listings linked with listing descriptions
 
-    :param data_path: source data path
-    :param store_path: destination data path
-    :param verbose: set to True to see the progress
-    :param cached: set to True to use cached data already processed
-    :return: processed listings
+    Args:
+        data_path: source data path
+        store_path: store data path
+        verbose: print logs
+        cached: use cached data
+        parent: parent directory
+
+    Returns:
+        DataFrame: processed listings
     """
     if cached:
         # if the file exists, load the file
@@ -179,14 +183,19 @@ def process_full_listings(
             elif column in ['host_is_superhost', 'host_has_profile_pic', 'host_identity_verified']:
                 merged_df[column] = merged_df[column].ffill()
 
+    if merged_df['price'].dtypes != 'float64':
+        merged_df['price'] = merged_df['price'].astype(float)
+
     # Convert to number
     def convert_price(price_str: str) -> float:
         """
         Convert price string to number
 
-        Parameters
-        ----------
-        price_str : str
+        Args:
+            price_str: price string
+
+        Returns:
+            float: price number
         """
         # Remove the currency symbol and convert the string to float
         return float(re.search(r'\d+(\.\d+)?', price_str).group())
@@ -266,4 +275,5 @@ if __name__ == '__main__':
     listing_df.to_csv(listing_path, index=False, compression="gzip")
 
     # process full listing
-    process_full_listings(verbose=True, cached=False, parent=parent)
+    process_full_listings(
+        data_path='data/interim', cached=False, parent=parent)

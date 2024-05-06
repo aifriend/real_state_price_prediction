@@ -15,7 +15,7 @@ class DataService:
     """
 
     @staticmethod
-    def load_data(file_path: str, chunk_size: int =1000) -> (int, optional):
+    def load_data(file_path: str, chunk_size: int = 1000) -> (int, optional):
         """
         Load data from a CSV file in chunks.
 
@@ -80,22 +80,23 @@ class DataService:
 
         # Iterate over each column in the DataFrame
         for idx, column in enumerate(df.columns):
-            logger.info(f"colum {idx} type {df.iloc[:, idx].dtype}")
+            # logger.info(f"colum {idx} type {df.iloc[:, idx].dtype}")
             # Check if the column is of object type
             if df[column].dtypes == 'object':
                 # Convert the column to string type
                 df[column] = df.iloc[:, idx].astype(pd.StringDtype())
-                logger.info(f"colum {idx} changed type to {df.iloc[:, idx].dtype}")
+                # logger.info(f"colum {idx} changed type to {df.iloc[:, idx].dtype}")
 
         return df
 
     @staticmethod
-    def save_model(model: object, parent: int = 0, apex: str = 'default') -> None:
+    def save_model(model: object, project_dir: Path, parent: int = 0, apex: str = 'default') -> None:
         """
         Save a model to a pickle file.
 
         Args:
             model (object): The model to save.
+            project_dir (Path): The project directory.
             parent (int, optional): The parent directory index. Defaults to 0.
             apex (str, optional): The apex name. Defaults to 'default'.
 
@@ -105,15 +106,16 @@ class DataService:
         model_name = f"{apex}_{model.__class__.__name__}"
         pickle.dump(model, open(
             Path.cwd().parents[parent].joinpath(
-                "models", model_name), 'wb'))
+                project_dir, "models", model_name), 'wb'))
 
     @staticmethod
-    def load_model(model: str, parent: int = 0, apex: str = 'default') -> Any:
+    def load_model(model: object, project_dir: Path, parent: int = 0, apex: str = 'default') -> Any:
         """
         Load a model from a pickle file.
 
         Args:
-            model (str): The model name.
+            model (object): The model name.
+            project_dir (Path): The project directory.
             parent (int, optional): The parent directory index. Defaults to 0.
             apex (str, optional): The apex name. Defaults to 'default'.
 
@@ -122,6 +124,6 @@ class DataService:
         """
         model_name = f"{apex}_{model.__class__.__name__}"
         loaded_model = pickle.load(open(Path.cwd().parents[parent].joinpath(
-            "models", model_name), 'rb'))
+            project_dir, "models", model_name), 'rb'))
 
         return loaded_model

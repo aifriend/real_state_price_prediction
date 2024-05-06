@@ -11,6 +11,7 @@ package-mode = false
 python = "^3.11"
 click = "^8.1.7"
 sphinx = "^7.3.7"
+sphinx-rtd-theme = "^2.0.0"
 coverage = "^7.5.0"
 flake8 = "^7.0.0"
 python-dotenv = "^1.0.1"
@@ -35,6 +36,8 @@ nltk = "^3.8.1"
 gensim = "^4.3.2"
 parallel-pandas = "^0.6.2"
 scipy = "1.12.0"
+jupyter = "^1.0.0"
+tox = "^4.15.0"
 
 
 [build-system]

@@ -23,15 +23,15 @@ def main(input_filepath, output_filepath):
     logger.info(f"Load processed listings from: {input_filepath}")
     listing_df = get_full_listings(input_filepath)
     listing_path = Path.cwd().parents[0].joinpath(output_filepath, 'listings.csv.gz')
+    logger.info(f"Saving to {listing_path}...")
     listing_df.to_csv(listing_path, index=False, compression="gzip")
-    logger.info(f"Saved to: {listing_path}")
 
     # load reviews
     logger.info(f"Load processed reviews from: {input_filepath}")
     reviews_df = get_full_reviews(input_filepath)
     reviews_path = Path.cwd().parents[0].joinpath(output_filepath, 'reviews.csv.gz')
+    logger.info(f"Saving to {reviews_path}...")
     reviews_df.to_csv(reviews_path, index=False, compression="gzip")
-    logger.info(f"Saved to: {reviews_path}")
 
 
 if __name__ == '__main__':

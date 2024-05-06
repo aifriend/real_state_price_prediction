@@ -31,9 +31,6 @@ class NlpService:
     remove_repeated_punctuation(reviews_df, label)
     remove_emoji(reviews_df, label)
     filter_english_language(reviews_df, label)
-    is_english(text)
-    nlp(text)
-    spell_check(text)
     """
     nlp = spacy.load("en_core_web_sm")
     spell = SpellChecker(distance=2)
@@ -43,15 +40,11 @@ class NlpService:
         """
         Check if the text is in english
 
-        Parameters
-        ----------
-        text : str
-            text to check
+        Args:
+            text : str
 
-        Returns
-        -------
-        bool
-            True if the text is in english, False otherwise
+        Returns:
+            bool
         """
         if not text:
             return False
@@ -75,16 +68,12 @@ class NlpService:
         """
         Lower case the text
 
-        Parameters
-        ----------
-        reviews_df : DataFrame
-            reviews dataframe
-        label : str
+        Args:
+            reviews_df : DataFrame
+            label : str
 
-        Returns
-        -------
-        DataFrame
-            reviews dataframe
+        Returns:
+            DataFrame
         """
         reviews_df.loc[:, label] = reviews_df[label].str.lower()
         return reviews_df
@@ -94,16 +83,12 @@ class NlpService:
         """
         Remove punctuation from the text
 
-        Parameters
-        ----------
-        reviews_df : DataFrame
-            reviews dataframe
-        label : str
+        Args:
+            reviews_df : DataFrame
+            label : str
 
-        Returns
-        -------
-        DataFrame
-            reviews dataframe
+        Returns:
+            DataFrame
         """
         reviews_df.loc[:, label] = reviews_df[label].str.replace(string.punctuation, '')
         return reviews_df
@@ -113,16 +98,12 @@ class NlpService:
         """
         Remove numbers from the text
 
-        Parameters
-        ----------
-        reviews_df : DataFrame
-            reviews dataframe
-        label : str
+        Args:
+            reviews_df : DataFrame
+            label : str
 
-        Returns
-        -------
-        DataFrame
-            reviews dataframe
+        Returns:
+            DataFrame
         """
         reviews_df.loc[:, label] = reviews_df[label].str.replace(r'\d+', '', regex=True)
         return reviews_df
@@ -132,16 +113,12 @@ class NlpService:
         """
         Remove whitespaces from the text
 
-        Parameters
-        ----------
-        reviews_df : DataFrame
-            reviews dataframe
-        label : str
+        Args:
+            reviews_df : DataFrame
+            label : str
 
-        Returns
-        -------
-        DataFrame
-            reviews dataframe
+        Returns:
+            DataFrame
         """
         reviews_df.loc[:, label] = reviews_df[label].str.strip()
         return reviews_df
@@ -151,16 +128,12 @@ class NlpService:
         """
         Remove repeated punctuation from the text
 
-        Parameters
-        ----------
-        reviews_df : DataFrame
-            reviews dataframe
-        label : str
+        Args:
+            reviews_df : DataFrame
+            label : str
 
-        Returns
-        -------
-        DataFrame
-            reviews dataframe
+        Returns:
+            DataFrame
         """
         reviews_df.loc[:, label] = reviews_df[label].str.replace(r'(.)\1+', r'\1\1', regex=True)
         reviews_df.loc[:, label] = reviews_df[label].str.replace(r'!', r'', regex=True)
@@ -173,16 +146,12 @@ class NlpService:
         """
         Remove emoji from the text
 
-        Parameters
-        ----------
-        reviews_df : DataFrame
-            reviews dataframe
-        label : str
+        Args:
+            reviews_df : DataFrame
+            label : str
 
-        Returns
-        -------
-        DataFrame
-            reviews dataframe
+        Returns:
+            DataFrame
         """
         reviews_df.loc[:, label] = reviews_df[label].apply(
             lambda x: emoji.replace_emoji(x, replace=''))
@@ -193,17 +162,14 @@ class NlpService:
         """
         Remove emoticon and symbol from the text
 
-        Parameters
-        ----------
-        reviews_df : DataFrame
-            reviews dataframe
-        label : str
+        Args:
+            reviews_df : DataFrame
+            label : str
 
-        Returns
-        -------
-        DataFrame
-            reviews dataframe
+        Returns:
+            DataFrame
         """
+
         def removal_func(text):
             emoticon_pattern = re.compile("["
                                           u"\U0001F600-\U0001F64F"  # emoticons
@@ -235,16 +201,12 @@ class NlpService:
         """
         Remove special characters from the text
 
-        Parameters
-        ----------
-        reviews_df : DataFrame
-            reviews dataframe
-        label : str
+        Args:
+            reviews_df : DataFrame
+            label : str
 
-        Returns
-        -------
-        DataFrame
-            reviews dataframe
+        Returns:
+            DataFrame
         """
         # remove_tags_url_email
         # remove_stopwords
@@ -264,16 +226,12 @@ class NlpService:
         """
         Filter reviews in english
 
-        Parameters
-        ----------
-        reviews_df : DataFrame
-            reviews dataframe
-        label : str
+        Args:
+            reviews_df : DataFrame
+            label : str
 
-        Returns
-        -------
-        DataFrame
-            reviews dataframe
+        Returns:
+            DataFrame
         """
         reviews_df = reviews_df[reviews_df[label].apply(NlpService.is_english)]
         return reviews_df
@@ -283,15 +241,11 @@ class NlpService:
         """
         Preprocess reviews
 
-        Parameters
-        ----------
-        rev_df : DataFrame
-            reviews dataframe
+        Args:
+            rev_df : DataFrame
 
-        Returns
-        -------
-        DataFrame
-            reviews dataframe
+        Returns:
+            DataFrame
         """
         # Remove punctuations
         logger.info("Remove punctuations")
@@ -332,15 +286,11 @@ class NlpService:
         """
         Preprocess reviews
 
-        Parameters
-        ----------
-        reviews_df : DataFrame
-            reviews dataframe
+        Args:
+            reviews_df : DataFrame
 
-        Returns
-        -------
-        DataFrame
-            reviews dataframe
+        Returns:
+            DataFrame
         """
         # filter in language
         logger.info("Filter comments in english")
