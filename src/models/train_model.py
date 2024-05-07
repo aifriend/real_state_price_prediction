@@ -178,11 +178,9 @@ def predict_review_outliers(review_df: DataFrame) -> None:
 
         # Print the outlier reviews
         logger.info(f"Outlier Reviews from {model_name}:")
-        for idx, index, review in enumerate(outlier_reviews.iterrows()):
+        for index, review in outlier_reviews.iterrows():
             logger.info(f"Listing ID: {review['listing_id']}")
             logger.info(f"Review Text: {review['comments']}")
-            if idx > 3:
-                break
 
     model = IsolationForest(contamination=0.1, random_state=42)
 
