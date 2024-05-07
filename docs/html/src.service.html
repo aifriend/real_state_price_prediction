@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>src.service package &mdash; Real State Price Prediction 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=01f34227"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="src.visualization package" href="src.visualization.html" />
+    <link rel="prev" title="src.models package" href="src.models.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Real State Price Prediction
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">real_state_price_prediction</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="src.html">src package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="src.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="src.data.html">src.data package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="src.features.html">src.features package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="src.models.html">src.models package</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">src.service package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="src.visualization.html">src.visualization package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="src.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.html#module-src.listing_etl_pipeline">src.listing_etl_pipeline module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.html#module-src.neighbourhood_etl_pipeline">src.neighbourhood_etl_pipeline module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.html#module-src.review_etl_pipeline">src.review_etl_pipeline module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.html#module-src">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="test_environment.html">test_environment module</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Real State Price Prediction</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">real_state_price_prediction</a></li>
+          <li class="breadcrumb-item"><a href="src.html">src package</a></li>
+      <li class="breadcrumb-item active">src.service package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/src.service.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="src-service-package">
+<h1>src.service package<a class="headerlink" href="#src-service-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-src.service.DataService">
+<span id="src-service-dataservice-module"></span><h2>src.service.DataService module<a class="headerlink" href="#module-src.service.DataService" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="src.service.DataService.DataService">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.service.DataService.</span></span><span class="sig-name descname"><span class="pre">DataService</span></span><a class="reference internal" href="_modules/src/service/DataService.html#DataService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.DataService.DataService" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>DataService is a class that provides methods for loading and processing data.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.DataService.DataService.convert_object_to_string">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">convert_object_to_string</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/src/service/DataService.html#DataService.convert_object_to_string"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.DataService.DataService.convert_object_to_string" title="Link to this definition"></a></dt>
+<dd><p>Convert object type columns to string type.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>df (DataFrame): The dataframe to convert.</p>
+</dd>
+<dt>Returns:</dt><dd><p>(DataFrame): The converted dataframe.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.DataService.DataService.load_data">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path:</span> <span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1000)</span> <span class="pre">-&gt;</span> <span class="pre">(&lt;class</span> <span class="pre">'int'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">&lt;function</span> <span class="pre">optional</span> <span class="pre">at</span> <span class="pre">0x1288f5da0&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/service/DataService.html#DataService.load_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.DataService.DataService.load_data" title="Link to this definition"></a></dt>
+<dd><p>Load data from a CSV file in chunks.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>file_path (str): The path to the CSV file.
+chunk_size (int, optional): The number of rows to read in each chunk. Defaults to 1000.</p>
+</dd>
+<dt>Returns:</dt><dd><p>(int, optional): The number of chunks processed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.DataService.DataService.load_model">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apex</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'default'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="reference internal" href="_modules/src/service/DataService.html#DataService.load_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.DataService.DataService.load_model" title="Link to this definition"></a></dt>
+<dd><p>Load a model from a pickle file.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>model (object): The model name.
+project_dir (Path): The project directory.
+parent (int, optional): The parent directory index. Defaults to 0.
+apex (str, optional): The apex name. Defaults to ‘default’.</p>
+</dd>
+<dt>Returns:</dt><dd><p>object: The loaded model.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.DataService.DataService.merge_dataset">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">merge_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/src/service/DataService.html#DataService.merge_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.DataService.DataService.merge_dataset" title="Link to this definition"></a></dt>
+<dd><p>Merge two dataframes based on a specified column.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>df1 (DataFrame): The first dataframe.
+df2 (DataFrame): The second dataframe.
+on (str, optional): The column to merge on. Defaults to ‘’.</p>
+</dd>
+<dt>Returns:</dt><dd><p>(DataFrame): The merged dataframe.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.DataService.DataService.save_model">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">save_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apex</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'default'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/src/service/DataService.html#DataService.save_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.DataService.DataService.save_model" title="Link to this definition"></a></dt>
+<dd><p>Save a model to a pickle file.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>model (object): The model to save.
+project_dir (Path): The project directory.
+parent (int, optional): The parent directory index. Defaults to 0.
+apex (str, optional): The apex name. Defaults to ‘default’.</p>
+</dd>
+<dt>Returns:</dt><dd><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-src.service.EmbeddingService">
+<span id="src-service-embeddingservice-module"></span><h2>src.service.EmbeddingService module<a class="headerlink" href="#module-src.service.EmbeddingService" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="src.service.EmbeddingService.EmbeddingService">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.service.EmbeddingService.</span></span><span class="sig-name descname"><span class="pre">EmbeddingService</span></span><a class="reference internal" href="_modules/src/service/EmbeddingService.html#EmbeddingService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.EmbeddingService.EmbeddingService" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>The class provides methods to generate embeddings for the text data.
+The embeddings are generated using Sentence Transformers
+(<a class="reference external" href="https://github.com/UKPLab/sentence-transformers">https://github.com/UKPLab/sentence-transformers</a>)
+and stored in a new column ‘comments_emb’</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.EmbeddingService.EmbeddingService.get_embeddings">
+<span class="sig-name descname"><span class="pre">get_embeddings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/src/service/EmbeddingService.html#EmbeddingService.get_embeddings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.EmbeddingService.EmbeddingService.get_embeddings" title="Link to this definition"></a></dt>
+<dd><p>Generate embeddings for the text data</p>
+<section id="parameters">
+<h3>Parameters<a class="headerlink" href="#parameters" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>df<span class="classifier">DataFrame</span></dt><dd><p>The dataframe containing the text data</p>
+</dd>
+<dt>text_label<span class="classifier">str</span></dt><dd><p>The name of the column containing the text data</p>
+</dd>
+</dl>
+</section>
+<section id="returns">
+<h3>Returns<a class="headerlink" href="#returns" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>DataFrame</dt><dd><p>The dataframe with the new column ‘comments_emb’</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-src.service.NlpService">
+<span id="src-service-nlpservice-module"></span><h2>src.service.NlpService module<a class="headerlink" href="#module-src.service.NlpService" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="src.service.NlpService.NlpService">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.service.NlpService.</span></span><span class="sig-name descname"><span class="pre">NlpService</span></span><a class="reference internal" href="_modules/src/service/NlpService.html#NlpService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.NlpService.NlpService" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>NlpService class</p>
+<section id="methods">
+<h3>Methods<a class="headerlink" href="#methods" title="Link to this heading"></a></h3>
+<p>process_reviews(reviews_df)
+process_listings(listings_df)
+process_listings_with_reviews(listings_df)
+remove_emoticon_and_symbol(reviews_df, label)
+remove_special_characters(reviews_df, label)
+remove_stopwords(reviews_df, label)
+remove_whitespaces(reviews_df, label)
+remove_punctuation(reviews_df, label)
+remove_numbers(reviews_df, label)
+lower_case(reviews_df, label)
+remove_repeated_punctuation(reviews_df, label)
+remove_emoji(reviews_df, label)
+filter_english_language(reviews_df, label)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.NlpService.NlpService.filter_english_language">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filter_english_language</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reviews_df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/src/service/NlpService.html#NlpService.filter_english_language"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.NlpService.NlpService.filter_english_language" title="Link to this definition"></a></dt>
+<dd><p>Filter reviews in english</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>reviews_df : DataFrame
+label : str</p>
+</dd>
+<dt>Returns:</dt><dd><p>DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.NlpService.NlpService.is_english">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_english</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/src/service/NlpService.html#NlpService.is_english"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.NlpService.NlpService.is_english" title="Link to this definition"></a></dt>
+<dd><p>Check if the text is in english</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>text : str</p>
+</dd>
+<dt>Returns:</dt><dd><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.NlpService.NlpService.lower_case">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lower_case</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reviews_df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/src/service/NlpService.html#NlpService.lower_case"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.NlpService.NlpService.lower_case" title="Link to this definition"></a></dt>
+<dd><p>Lower case the text</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>reviews_df : DataFrame
+label : str</p>
+</dd>
+<dt>Returns:</dt><dd><p>DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.service.NlpService.NlpService.nlp">
+<span class="sig-name descname"><span class="pre">nlp</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;spacy.lang.en.English</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#src.service.NlpService.NlpService.nlp" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.NlpService.NlpService.process_reviews">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">process_reviews</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reviews_df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/src/service/NlpService.html#NlpService.process_reviews"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.NlpService.NlpService.process_reviews" title="Link to this definition"></a></dt>
+<dd><p>Preprocess reviews</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>reviews_df : DataFrame</p>
+</dd>
+<dt>Returns:</dt><dd><p>DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.NlpService.NlpService.remove_emoji">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">remove_emoji</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reviews_df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/src/service/NlpService.html#NlpService.remove_emoji"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.NlpService.NlpService.remove_emoji" title="Link to this definition"></a></dt>
+<dd><p>Remove emoji from the text</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>reviews_df : DataFrame
+label : str</p>
+</dd>
+<dt>Returns:</dt><dd><p>DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.NlpService.NlpService.remove_emoticon_and_symbol">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">remove_emoticon_and_symbol</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reviews_df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/src/service/NlpService.html#NlpService.remove_emoticon_and_symbol"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.NlpService.NlpService.remove_emoticon_and_symbol" title="Link to this definition"></a></dt>
+<dd><p>Remove emoticon and symbol from the text</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>reviews_df : DataFrame
+label : str</p>
+</dd>
+<dt>Returns:</dt><dd><p>DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.NlpService.NlpService.remove_numbers">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">remove_numbers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reviews_df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/src/service/NlpService.html#NlpService.remove_numbers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.NlpService.NlpService.remove_numbers" title="Link to this definition"></a></dt>
+<dd><p>Remove numbers from the text</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>reviews_df : DataFrame
+label : str</p>
+</dd>
+<dt>Returns:</dt><dd><p>DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.NlpService.NlpService.remove_punctuation">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">remove_punctuation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reviews_df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/src/service/NlpService.html#NlpService.remove_punctuation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.NlpService.NlpService.remove_punctuation" title="Link to this definition"></a></dt>
+<dd><p>Remove punctuation from the text</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>reviews_df : DataFrame
+label : str</p>
+</dd>
+<dt>Returns:</dt><dd><p>DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.NlpService.NlpService.remove_repeated_punctuation">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">remove_repeated_punctuation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reviews_df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/src/service/NlpService.html#NlpService.remove_repeated_punctuation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.NlpService.NlpService.remove_repeated_punctuation" title="Link to this definition"></a></dt>
+<dd><p>Remove repeated punctuation from the text</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>reviews_df : DataFrame
+label : str</p>
+</dd>
+<dt>Returns:</dt><dd><p>DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.NlpService.NlpService.remove_special_characters">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">remove_special_characters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reviews_df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/src/service/NlpService.html#NlpService.remove_special_characters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.NlpService.NlpService.remove_special_characters" title="Link to this definition"></a></dt>
+<dd><p>Remove special characters from the text</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>reviews_df : DataFrame
+label : str</p>
+</dd>
+<dt>Returns:</dt><dd><p>DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.NlpService.NlpService.remove_whitespaces">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">remove_whitespaces</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reviews_df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/src/service/NlpService.html#NlpService.remove_whitespaces"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.NlpService.NlpService.remove_whitespaces" title="Link to this definition"></a></dt>
+<dd><p>Remove whitespaces from the text</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>reviews_df : DataFrame
+label : str</p>
+</dd>
+<dt>Returns:</dt><dd><p>DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.service.NlpService.NlpService.spell">
+<span class="sig-name descname"><span class="pre">spell</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;spellchecker.spellchecker.SpellChecker</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#src.service.NlpService.NlpService.spell" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+</dd></dl>
+
+</section>
+<section id="module-src.service.RentalLogger">
+<span id="src-service-rentallogger-module"></span><h2>src.service.RentalLogger module<a class="headerlink" href="#module-src.service.RentalLogger" title="Link to this heading"></a></h2>
+</section>
+<section id="module-src.service.TrainService">
+<span id="src-service-trainservice-module"></span><h2>src.service.TrainService module<a class="headerlink" href="#module-src.service.TrainService" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="src.service.TrainService.TrainService">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.service.TrainService.</span></span><span class="sig-name descname"><span class="pre">TrainService</span></span><a class="reference internal" href="_modules/src/service/TrainService.html#TrainService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.TrainService.TrainService" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.TrainService.TrainService.mape">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_true</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_pred</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/src/service/TrainService.html#TrainService.mape"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.TrainService.TrainService.mape" title="Link to this definition"></a></dt>
+<dd><p>Calculate the Mean Absolute Percentage Error (MAPE) between the true and predicted values.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>model: object
+y_true (array-like): True values.
+y_pred (array-like): Predicted values.</p>
+</dd>
+<dt>Returns:</dt><dd><p>float: MAPE value.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.TrainService.TrainService.pre_process_for">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pre_process_for</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="reference internal" href="_modules/src/service/TrainService.html#TrainService.pre_process_for"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.TrainService.TrainService.pre_process_for" title="Link to this definition"></a></dt>
+<dd><p>Pre-process</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>df: DataFrame</p>
+</dd>
+<dt>Returns:</dt><dd><p>Any</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.TrainService.TrainService.r2">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">r2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_true</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_pred</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/src/service/TrainService.html#TrainService.r2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.TrainService.TrainService.r2" title="Link to this definition"></a></dt>
+<dd><p>Calculate the R-squared (R²) value between the true and predicted values.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>model: object
+y_true (array-like): True values.
+y_pred (array-like): Predicted values.</p>
+</dd>
+<dt>Returns:</dt><dd><p>float: R-squared value.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.TrainService.TrainService.rmse">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rmse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_true</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_pred</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/src/service/TrainService.html#TrainService.rmse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.TrainService.TrainService.rmse" title="Link to this definition"></a></dt>
+<dd><p>Calculate the Root Mean Squared Error (RMSE) between the true and predicted values.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>model: object
+y_true (array-like): True values.
+y_pred (array-like): Predicted values.</p>
+</dd>
+<dt>Returns:</dt><dd><p>float: RMSE value.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.TrainService.TrainService.train">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X_train</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X_test</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_train</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_test</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_dir:</span> <span class="pre">~pathlib.Path)</span> <span class="pre">-&gt;</span> <span class="pre">(&lt;class</span> <span class="pre">'xgboost.sklearn.XGBRegressor'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">typing.List</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/service/TrainService.html#TrainService.train"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.TrainService.TrainService.train" title="Link to this definition"></a></dt>
+<dd><p>Train the model</p>
+<p>Baseline Models
+Implemented five machine learning models with baseline parameter configurations and
+evaluated model performance on the validation data based on root mean squared error (RMSE),
+mean absolute percentage error (MAPE), and R-squared (R²).</p>
+<p>Model                   RMSE    MAPE    R²
+Linear Regression       407     151     0.05
+Decision Tree           388     77      0.13
+Xgboost                 331     110     0.36
+Gradient Boosting       341     105     0.33
+Random Forest           353     80      0.28</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>X_train: training data
+X_test: test data
+y_train: training labels
+y_test: test labels
+project_dir: project directory</p>
+</dd>
+<dt>Returns:</dt><dd><p>XGBRegressor: trained model
+List: list of X values for training</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.TrainService.TrainService.train_review_sentiment_analysis">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">train_review_sentiment_analysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rev_df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/src/service/TrainService.html#TrainService.train_review_sentiment_analysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.TrainService.TrainService.train_review_sentiment_analysis" title="Link to this definition"></a></dt>
+<dd><p>In this method, I perform sentiment analysis on the reviews with these steps:
+1) We have a list of review texts without any sentiment labels.
+2) We tokenize the reviews by splitting them into words.
+3) We train a Word2Vec model on the tokenized reviews to learn word embeddings.
+4) We generate review embeddings by averaging the word embeddings for each review.
+5) We perform clustering using the KMeans algorithm on the review embeddings. Here, we specify the number of clusters as 2, assuming we want to group the reviews into two sentiment clusters (positive and negative).
+6) We evaluate the clustering performance using the silhouette score, which measures how well the reviews are clustered.
+7) We print the reviews along with their assigned cluster labels.
+8) We predict the cluster for a new review by tokenizing it, generating its embedding, and using the trained KMeans model.</p>
+<p>In this unsupervised approach, we don’t have explicit sentiment labels. Instead, we rely on the clustering algorithm to group similar reviews together based on their embeddings. The assumption is that reviews with similar sentiments will have similar embeddings and will be clustered together.
+Note that the interpretation of the clusters as positive or negative sentiment may require manual inspection of the reviews within each cluster. Additionally, the optimal number of clusters may vary depending on the data and the desired granularity of sentiment analysis.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>rev_df: reviews dataframe
+project_dir: project directory
+parent: parent id</p>
+</dd>
+<dt>Returns:</dt><dd><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.TrainService.TrainService.train_reviews_by_score">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">train_reviews_by_score</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rev_df:</span> <span class="pre">~pandas.core.frame.DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_dir:</span> <span class="pre">~pathlib.Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">0)</span> <span class="pre">-&gt;</span> <span class="pre">(&lt;class</span> <span class="pre">'sklearn.linear_model._logistic.LogisticRegression'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">&lt;class</span> <span class="pre">'src.service.EmbeddingService.EmbeddingService'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">typing.List</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">typing.List</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/service/TrainService.html#TrainService.train_reviews_by_score"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.TrainService.TrainService.train_reviews_by_score" title="Link to this definition"></a></dt>
+<dd><p>The following code is used for text clustering and documents embedding. We want to represent reviews
+as vectors representation to be able to apply clustering algorithms to detect topics. Reviews are
+usually short sentences, thus, we should look for a suitable embedding approach for this situation
+like Sentence Transformers with BERT or Glove.</p>
+<p>We analyzed the relationship between the description of each listing and its price,
+and proposed a text-based price recommendation system called TAPE to recommend a reasonable price
+for newly added listings</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>rev_df: reviews dataframe
+project_dir: project directory
+parent: parent id</p>
+</dd>
+<dt>Returns:</dt><dd><p>classifier: classifier
+emb_service: embedding service
+X_test: test data
+y_test: test labels</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.service.TrainService.TrainService.xgboost_tuning">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">xgboost_tuning</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X_train</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_train)</span> <span class="pre">-&gt;</span> <span class="pre">(&lt;class</span> <span class="pre">'xgboost.sklearn.XGBRegressor'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">&lt;class</span> <span class="pre">'float'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">&lt;class</span> <span class="pre">'float'&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/service/TrainService.html#TrainService.xgboost_tuning"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.service.TrainService.TrainService.xgboost_tuning" title="Link to this definition"></a></dt>
+<dd><p>The chosen model was an XGBoost regression model with the following hyperparameters:
+Best hyperparameters:
+colsample_bytree: 1.0
+gamma: 0
+learning_rate: 0.1
+max_depth: 5
+min_child_weight: 3
+n_estimators: 400
+subsample: 0.9</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>X_train: training data
+y_train: training labels</p>
+</dd>
+<dt>Returns:</dt><dd><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-src.service">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-src.service" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="src.models.html" class="btn btn-neutral float-left" title="src.models package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="src.visualization.html" class="btn btn-neutral float-right" title="src.visualization package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Jose Lopez.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

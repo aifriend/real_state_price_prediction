@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>src.listing_etl_pipeline &mdash; Real State Price Prediction 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=01f34227"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Real State Price Prediction
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">real_state_price_prediction</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Real State Price Prediction</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">src.listing_etl_pipeline</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for src.listing_etl_pipeline</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">pandas</span> <span class="kn">import</span> <span class="n">DataFrame</span>
+<span class="kn">from</span> <span class="nn">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">LabelEncoder</span>
+
+<span class="kn">from</span> <span class="nn">src.service.DataService</span> <span class="kn">import</span> <span class="n">DataService</span>
+<span class="kn">from</span> <span class="nn">src.service.RentalLogger</span> <span class="kn">import</span> <span class="n">logger</span>
+
+
+<span class="k">def</span> <span class="nf">_load_listings</span><span class="p">(</span><span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load listings</span>
+
+<span class="sd">    :param data_path: source data path</span>
+<span class="sd">    :return: dataframe of listings</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">listings_path</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">data_path</span><span class="p">,</span> <span class="s1">&#39;listings.csv&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">listings_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Processed listings not found.&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Load processed listings from: </span><span class="si">{</span><span class="n">listings_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">df1</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">listings_path</span><span class="p">,</span> <span class="n">low_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">df1</span><span class="o">.</span><span class="n">head</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Convert object type columns to string</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Converting listings object type columns to string&quot;</span><span class="p">)</span>
+    <span class="n">df1</span> <span class="o">=</span> <span class="n">DataService</span><span class="o">.</span><span class="n">convert_object_to_string</span><span class="p">(</span><span class="n">df1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df1</span>
+
+
+<span class="k">def</span> <span class="nf">_load_listings_desc</span><span class="p">(</span><span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load listing descriptions</span>
+
+<span class="sd">    :param data_path: source data path</span>
+<span class="sd">    :return: dataframe of listing descriptions</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">listing_desc_path</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">data_path</span><span class="p">,</span> <span class="s1">&#39;listings.csv.gz&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">listing_desc_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Processed listing descriptions not found.&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Load processed listing descriptions from: </span><span class="si">{</span><span class="n">listing_desc_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">df2</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">listing_desc_path</span><span class="p">,</span> <span class="n">low_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">df2</span><span class="o">.</span><span class="n">head</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Convert object type columns to string</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Converting listings_desc object type columns to string&quot;</span><span class="p">)</span>
+    <span class="n">df2</span> <span class="o">=</span> <span class="n">DataService</span><span class="o">.</span><span class="n">convert_object_to_string</span><span class="p">(</span><span class="n">df2</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df2</span>
+
+
+<div class="viewcode-block" id="get_full_listings">
+<a class="viewcode-back" href="../../src.html#src.listing_etl_pipeline.get_full_listings">[docs]</a>
+<span class="k">def</span> <span class="nf">get_full_listings</span><span class="p">(</span><span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;data/raw&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get full listings linked with listing descriptions</span>
+
+<span class="sd">    :param data_path: source data path</span>
+<span class="sd">    :return: merged dataframe of listings and listing descriptions</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">m_df</span> <span class="o">=</span> <span class="n">DataService</span><span class="o">.</span><span class="n">merge_dataset</span><span class="p">(</span>
+        <span class="n">_load_listings</span><span class="p">(</span><span class="n">data_path</span><span class="p">),</span>
+        <span class="n">_load_listings_desc</span><span class="p">(</span><span class="n">data_path</span><span class="p">),</span> <span class="n">on</span><span class="o">=</span><span class="s1">&#39;id&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Save the merged DataFrame to a new dataframe with the same name</span>
+    <span class="n">m_df</span> <span class="o">=</span> <span class="n">DataFrame</span><span class="p">(</span><span class="n">m_df</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">m_df</span></div>
+
+
+
+<div class="viewcode-block" id="process_full_listings">
+<a class="viewcode-back" href="../../src.html#src.listing_etl_pipeline.process_full_listings">[docs]</a>
+<span class="k">def</span> <span class="nf">process_full_listings</span><span class="p">(</span>
+        <span class="n">data_path</span><span class="o">=</span><span class="s1">&#39;data/interim&#39;</span><span class="p">,</span>
+        <span class="n">store_path</span><span class="o">=</span><span class="s1">&#39;data/processed&#39;</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">cached</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">parent</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Process full listings linked with listing descriptions</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        data_path: source data path</span>
+<span class="sd">        store_path: store data path</span>
+<span class="sd">        verbose: print logs</span>
+<span class="sd">        cached: use cached data</span>
+<span class="sd">        parent: parent directory</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        DataFrame: processed listings</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">cached</span><span class="p">:</span>
+        <span class="c1"># if the file exists, load the file</span>
+        <span class="k">if</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">store_path</span><span class="p">,</span> <span class="s2">&quot;listings.csv.gz&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Load processed listings from: &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">store_path</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;listings.csv.gz&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span>
+                <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span>
+                    <span class="n">store_path</span><span class="p">,</span> <span class="s2">&quot;listings.csv.gz&quot;</span><span class="p">),</span> <span class="n">low_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processed listings not found at &quot;</span>
+                             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">store_path</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;listings.csv.gz&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Load full listings...&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">data_path</span><span class="p">,</span> <span class="s2">&quot;listings.csv.gz&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Full listing file missing: &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">data_path</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;listings.csv.gz&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">merged_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span>
+            <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span>
+                <span class="n">data_path</span><span class="p">,</span> <span class="s2">&quot;listings.csv.gz&quot;</span><span class="p">),</span> <span class="n">low_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processing listings...&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Drop meaningless columns</span>
+    <span class="n">merged_df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;host_id&#39;</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;host_name&#39;</span><span class="p">,</span> <span class="s1">&#39;last_review&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;listing_url&#39;</span><span class="p">,</span> <span class="s1">&#39;neighborhood_overview&#39;</span><span class="p">,</span> <span class="s1">&#39;notes&#39;</span><span class="p">,</span> <span class="s1">&#39;transit&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;scrape_id&#39;</span><span class="p">,</span> <span class="s1">&#39;last_scraped&#39;</span><span class="p">,</span> <span class="s1">&#39;summary&#39;</span><span class="p">,</span> <span class="s1">&#39;description&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;access&#39;</span><span class="p">,</span> <span class="s1">&#39;interaction&#39;</span><span class="p">,</span> <span class="s1">&#39;house_rules&#39;</span><span class="p">,</span> <span class="s1">&#39;picture_url&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;host_url&#39;</span><span class="p">,</span> <span class="s1">&#39;host_since&#39;</span><span class="p">,</span> <span class="s1">&#39;host_about&#39;</span><span class="p">,</span> <span class="s1">&#39;host_thumbnail_url&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;host_picture_url&#39;</span><span class="p">,</span> <span class="s1">&#39;host_verifications&#39;</span><span class="p">,</span> <span class="s1">&#39;amenities&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;calendar_updated&#39;</span><span class="p">,</span> <span class="s1">&#39;calendar_last_scraped&#39;</span><span class="p">,</span> <span class="s1">&#39;first_review&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;host_acceptance_rate&#39;</span><span class="p">,</span> <span class="s1">&#39;experiences_offered&#39;</span><span class="p">,</span> <span class="s1">&#39;thumbnail_url&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;medium_url&#39;</span><span class="p">,</span> <span class="s1">&#39;xl_picture_url&#39;</span><span class="p">,</span> <span class="s1">&#39;jurisdiction_names&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;country_code&#39;</span><span class="p">,</span> <span class="s1">&#39;country&#39;</span><span class="p">,</span> <span class="s1">&#39;smart_location&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;require_guest_profile_picture&#39;</span><span class="p">,</span> <span class="s1">&#39;requires_license&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;require_guest_phone_verification&#39;</span><span class="p">,</span> <span class="s1">&#39;market&#39;</span><span class="p">,</span> <span class="s1">&#39;cancellation_policy&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;calculated_host_listings_count_entire_homes&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;calculated_host_listings_count_private_rooms&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;calculated_host_listings_count_shared_rooms&#39;</span><span class="p">,</span> <span class="s1">&#39;license&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;instant_bookable&#39;</span><span class="p">,</span> <span class="s1">&#39;is_business_travel_ready&#39;</span><span class="p">,</span> <span class="s1">&#39;space&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;is_location_exact&#39;</span>
+                            <span class="p">],</span>
+                   <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">merged_df</span><span class="o">.</span><span class="n">info</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Nullable: </span><span class="si">{</span><span class="n">merged_df</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Duplicated: </span><span class="si">{</span><span class="n">merged_df</span><span class="o">.</span><span class="n">duplicated</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Impute missing values</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Imputing missing values&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Nullable: </span><span class="si">{</span><span class="n">merged_df</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="c1"># Fill NaN values with 0.0 make sense where number_of_reviews == 0</span>
+    <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;reviews_per_month&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;reviews_per_month&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="c1"># for each column in the DataFrame that is null</span>
+    <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">merged_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="c1"># if the column has null values</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="ow">or</span>
+                <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">()</span> <span class="ow">or</span>
+                <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">eq</span><span class="p">(</span><span class="s1">&#39;&lt;NA&gt;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">()):</span>
+            <span class="c1"># fill the column with an empty string</span>
+            <span class="k">if</span> <span class="n">column</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;space&#39;</span><span class="p">,</span> <span class="s1">&#39;host_neighbourhood&#39;</span><span class="p">,</span> <span class="s1">&#39;city&#39;</span><span class="p">,</span> <span class="s1">&#39;zipcode&#39;</span><span class="p">]:</span>
+                <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2"> ==&gt; Filled with empty string&quot;</span><span class="p">)</span>
+            <span class="c1"># fill the column with forward value</span>
+            <span class="k">elif</span> <span class="n">column</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;state&#39;</span><span class="p">,</span> <span class="s1">&#39;host_location&#39;</span><span class="p">,</span> <span class="s1">&#39;host_is_superhost&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;host_has_profile_pic&#39;</span><span class="p">,</span> <span class="s1">&#39;host_identity_verified&#39;</span><span class="p">]:</span>
+                <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">ffill</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2"> ==&gt; Filled with forward value&quot;</span><span class="p">)</span>
+            <span class="c1"># fill the column with 0%</span>
+            <span class="k">elif</span> <span class="n">column</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;host_response_rate&#39;</span><span class="p">]:</span>
+                <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s1">&#39;0%&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2"> ==&gt; Filled with &#39;0%&#39;&quot;</span><span class="p">)</span>
+            <span class="c1"># fill the column with 0.0</span>
+            <span class="k">elif</span> <span class="n">column</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;square_feet&#39;</span><span class="p">,</span> <span class="s1">&#39;review_scores_accuracy&#39;</span><span class="p">,</span> <span class="s1">&#39;review_scores_cleanliness&#39;</span><span class="p">,</span> <span class="s1">&#39;review_scores_value&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;review_scores_communication&#39;</span><span class="p">,</span> <span class="s1">&#39;review_scores_location&#39;</span><span class="p">,</span> <span class="s1">&#39;review_scores_checkin&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;review_scores_rating&#39;</span><span class="p">,</span> <span class="s1">&#39;host_listings_count&#39;</span><span class="p">,</span> <span class="s1">&#39;host_total_listings_count&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;bathrooms&#39;</span><span class="p">,</span> <span class="s1">&#39;bedrooms&#39;</span><span class="p">,</span> <span class="s1">&#39;beds&#39;</span><span class="p">]:</span>
+                <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s1">&#39;0.0&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2"> ==&gt; Filled with &#39;0.0&#39;&quot;</span><span class="p">)</span>
+            <span class="c1"># fill the column with $0.0</span>
+            <span class="k">elif</span> <span class="n">column</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;weekly_price&#39;</span><span class="p">,</span> <span class="s1">&#39;monthly_price&#39;</span><span class="p">,</span> <span class="s1">&#39;security_deposit&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;cleaning_fee&#39;</span><span class="p">,</span> <span class="s1">&#39;extra_people&#39;</span><span class="p">]:</span>
+                <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s1">&#39;$0.0&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2"> ==&gt; Filled with &#39;$0.0&#39;&quot;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">column</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;host_is_superhost&#39;</span><span class="p">,</span> <span class="s1">&#39;host_has_profile_pic&#39;</span><span class="p">,</span> <span class="s1">&#39;host_identity_verified&#39;</span><span class="p">]:</span>
+                <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">ffill</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dtypes</span> <span class="o">!=</span> <span class="s1">&#39;float64&#39;</span><span class="p">:</span>
+        <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="c1"># Convert to number</span>
+    <span class="k">def</span> <span class="nf">convert_price</span><span class="p">(</span><span class="n">price_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert price string to number</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            price_str: price string</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: price number</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Remove the currency symbol and convert the string to float</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\d+(\.\d+)?&#39;</span><span class="p">,</span> <span class="n">price_str</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">())</span>
+
+    <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;weekly_price&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;weekly_price&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">convert_price</span><span class="p">)</span>
+    <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;monthly_price&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;monthly_price&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">convert_price</span><span class="p">)</span>
+    <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;security_deposit&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;security_deposit&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">convert_price</span><span class="p">)</span>
+    <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;cleaning_fee&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;cleaning_fee&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">convert_price</span><span class="p">)</span>
+    <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;extra_people&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;extra_people&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">convert_price</span><span class="p">)</span>
+    <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;host_response_rate&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;host_response_rate&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\d+(\.\d+)?&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">())</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Convert &#39;t&#39; and &#39;f&#39; to boolean</span>
+    <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;host_is_superhost&#39;</span><span class="p">,</span> <span class="s1">&#39;host_has_profile_pic&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;host_identity_verified&#39;</span><span class="p">,</span> <span class="s1">&#39;has_availability&#39;</span><span class="p">]:</span>
+        <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">({</span><span class="s1">&#39;t&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2"> ==&gt; Converted &#39;t&#39; and &#39;f&#39; to boolean&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Convert objects columns to category if necessary</span>
+    <span class="c1"># The categorical features have to be converted internally to numerical features for efficient modeling</span>
+    <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;host_response_time&#39;</span><span class="p">,</span> <span class="s1">&#39;host_neighbourhood&#39;</span><span class="p">,</span> <span class="s1">&#39;neighbourhood_group&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;neighbourhood&#39;</span><span class="p">,</span> <span class="s1">&#39;room_type&#39;</span><span class="p">]:</span>
+        <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;category&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">codes</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2"> ==&gt; Converted to category type&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Apply LabelEncoder to the categorical column</span>
+    <span class="n">label_encoder</span> <span class="o">=</span> <span class="n">LabelEncoder</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;host_response_time&#39;</span><span class="p">]:</span>
+        <span class="n">encoded_categories</span> <span class="o">=</span> <span class="n">label_encoder</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">])</span>
+        <span class="n">category_mapping</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">],</span> <span class="n">encoded_categories</span><span class="p">))</span>
+        <span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">encoded_categories</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2"> ==&gt; &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;Apply label encoder with label &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">category_mapping</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Remove outliers</span>
+    <span class="c1"># Calculate the IQR</span>
+    <span class="n">q1</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.25</span><span class="p">)</span>
+    <span class="n">q3</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.75</span><span class="p">)</span>
+    <span class="n">iqr</span> <span class="o">=</span> <span class="n">q3</span> <span class="o">-</span> <span class="n">q1</span>
+    <span class="n">outliers</span> <span class="o">=</span> <span class="p">(</span><span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]</span> <span class="o">&lt;</span>
+                <span class="p">(</span><span class="n">q1</span> <span class="o">-</span> <span class="mf">1.5</span> <span class="o">*</span> <span class="n">iqr</span><span class="p">))</span> <span class="o">|</span> <span class="p">(</span><span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="p">(</span><span class="n">q3</span> <span class="o">+</span> <span class="mf">1.5</span> <span class="o">*</span> <span class="n">iqr</span><span class="p">))</span>
+    <span class="n">merged_df</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="o">~</span><span class="n">outliers</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">merged_df</span><span class="o">.</span><span class="n">info</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">merged_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="n">column</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;=&#39;</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">20</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of null values: </span><span class="si">{</span><span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Duplicated: </span><span class="si">{</span><span class="n">merged_df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">duplicated</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Check if there are any null values</span>
+        <span class="k">if</span> <span class="n">merged_df</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">merged_df</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">merged_df</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">()]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">()</span>
+
+    <span class="c1"># save processed listings</span>
+    <span class="n">merged_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span>
+        <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span>
+            <span class="n">store_path</span><span class="p">,</span> <span class="s2">&quot;listings.csv.gz&quot;</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;gzip&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved to: </span><span class="si">{</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">store_path</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;listings.csv.gz&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">merged_df</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">parent</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="c1"># create linked listing</span>
+    <span class="n">listing_df</span> <span class="o">=</span> <span class="n">get_full_listings</span><span class="p">(</span><span class="n">data_path</span><span class="o">=</span><span class="s1">&#39;data/raw&#39;</span><span class="p">)</span>
+    <span class="n">listing_path</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="s1">&#39;data/interim&#39;</span><span class="p">,</span> <span class="s1">&#39;listings.csv.gz&#39;</span><span class="p">)</span>
+    <span class="n">listing_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">listing_path</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;gzip&quot;</span><span class="p">)</span>
+
+    <span class="c1"># process full listing</span>
+    <span class="n">process_full_listings</span><span class="p">(</span>
+        <span class="n">data_path</span><span class="o">=</span><span class="s1">&#39;data/interim&#39;</span><span class="p">,</span> <span class="n">cached</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Jose Lopez.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

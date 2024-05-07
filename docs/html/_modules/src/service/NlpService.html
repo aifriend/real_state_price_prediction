@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>src.service.NlpService &mdash; Real State Price Prediction 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Real State Price Prediction
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">real_state_price_prediction</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Real State Price Prediction</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">src.service.NlpService</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for src.service.NlpService</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">string</span>
+
+<span class="kn">import</span> <span class="nn">emoji</span>
+<span class="kn">import</span> <span class="nn">spacy</span>
+<span class="kn">from</span> <span class="nn">pandas</span> <span class="kn">import</span> <span class="n">DataFrame</span>
+<span class="kn">from</span> <span class="nn">parallel_pandas</span> <span class="kn">import</span> <span class="n">ParallelPandas</span>
+<span class="kn">from</span> <span class="nn">spellchecker</span> <span class="kn">import</span> <span class="n">SpellChecker</span>
+
+<span class="kn">from</span> <span class="nn">src.service.RentalLogger</span> <span class="kn">import</span> <span class="n">logger</span>
+
+<span class="n">ParallelPandas</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span><span class="n">n_cpu</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">split_factor</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">disable_pr_bar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="NlpService">
+<a class="viewcode-back" href="../../../src.service.html#src.service.NlpService.NlpService">[docs]</a>
+<span class="k">class</span> <span class="nc">NlpService</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    NlpService class</span>
+
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    process_reviews(reviews_df)</span>
+<span class="sd">    process_listings(listings_df)</span>
+<span class="sd">    process_listings_with_reviews(listings_df)</span>
+<span class="sd">    remove_emoticon_and_symbol(reviews_df, label)</span>
+<span class="sd">    remove_special_characters(reviews_df, label)</span>
+<span class="sd">    remove_stopwords(reviews_df, label)</span>
+<span class="sd">    remove_whitespaces(reviews_df, label)</span>
+<span class="sd">    remove_punctuation(reviews_df, label)</span>
+<span class="sd">    remove_numbers(reviews_df, label)</span>
+<span class="sd">    lower_case(reviews_df, label)</span>
+<span class="sd">    remove_repeated_punctuation(reviews_df, label)</span>
+<span class="sd">    remove_emoji(reviews_df, label)</span>
+<span class="sd">    filter_english_language(reviews_df, label)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nlp</span> <span class="o">=</span> <span class="n">spacy</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;en_core_web_sm&quot;</span><span class="p">)</span>
+    <span class="n">spell</span> <span class="o">=</span> <span class="n">SpellChecker</span><span class="p">(</span><span class="n">distance</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<div class="viewcode-block" id="NlpService.is_english">
+<a class="viewcode-back" href="../../../src.service.html#src.service.NlpService.NlpService.is_english">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">is_english</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check if the text is in english</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            text : str</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">word_list</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">word_list</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># find those words that may be misspelled</span>
+        <span class="n">misspelled</span> <span class="o">=</span> <span class="n">NlpService</span><span class="o">.</span><span class="n">spell</span><span class="o">.</span><span class="n">unknown</span><span class="p">(</span><span class="n">word_list</span><span class="p">)</span>
+        <span class="n">spelled</span> <span class="o">=</span> <span class="n">NlpService</span><span class="o">.</span><span class="n">spell</span><span class="o">.</span><span class="n">known</span><span class="p">(</span><span class="n">word_list</span><span class="p">)</span>
+
+        <span class="n">ratio</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">spelled</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">misspelled</span><span class="p">)</span> <span class="k">if</span> <span class="n">misspelled</span> <span class="k">else</span> <span class="mf">1.0</span>
+        <span class="k">if</span> <span class="n">ratio</span> <span class="o">&lt;=</span> <span class="mf">0.8</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="NlpService.lower_case">
+<a class="viewcode-back" href="../../../src.service.html#src.service.NlpService.NlpService.lower_case">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">lower_case</span><span class="p">(</span><span class="n">reviews_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Lower case the text</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            reviews_df : DataFrame</span>
+<span class="sd">            label : str</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">reviews_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">reviews_df</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">reviews_df</span></div>
+
+
+<div class="viewcode-block" id="NlpService.remove_punctuation">
+<a class="viewcode-back" href="../../../src.service.html#src.service.NlpService.NlpService.remove_punctuation">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">remove_punctuation</span><span class="p">(</span><span class="n">reviews_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove punctuation from the text</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            reviews_df : DataFrame</span>
+<span class="sd">            label : str</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">reviews_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">reviews_df</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">string</span><span class="o">.</span><span class="n">punctuation</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">reviews_df</span></div>
+
+
+<div class="viewcode-block" id="NlpService.remove_numbers">
+<a class="viewcode-back" href="../../../src.service.html#src.service.NlpService.NlpService.remove_numbers">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">remove_numbers</span><span class="p">(</span><span class="n">reviews_df</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove numbers from the text</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            reviews_df : DataFrame</span>
+<span class="sd">            label : str</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">reviews_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">reviews_df</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\d+&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">reviews_df</span></div>
+
+
+<div class="viewcode-block" id="NlpService.remove_whitespaces">
+<a class="viewcode-back" href="../../../src.service.html#src.service.NlpService.NlpService.remove_whitespaces">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">remove_whitespaces</span><span class="p">(</span><span class="n">reviews_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove whitespaces from the text</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            reviews_df : DataFrame</span>
+<span class="sd">            label : str</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">reviews_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">reviews_df</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">reviews_df</span></div>
+
+
+<div class="viewcode-block" id="NlpService.remove_repeated_punctuation">
+<a class="viewcode-back" href="../../../src.service.html#src.service.NlpService.NlpService.remove_repeated_punctuation">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">remove_repeated_punctuation</span><span class="p">(</span><span class="n">reviews_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove repeated punctuation from the text</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            reviews_df : DataFrame</span>
+<span class="sd">            label : str</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">reviews_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">reviews_df</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;(.)\1+&#39;</span><span class="p">,</span> <span class="sa">r</span><span class="s1">&#39;\1\1&#39;</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">reviews_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">reviews_df</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;!&#39;</span><span class="p">,</span> <span class="sa">r</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">reviews_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">reviews_df</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;(\n|\r)&#39;</span><span class="p">,</span> <span class="sa">r</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">reviews_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">reviews_df</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;(,)+&#39;</span><span class="p">,</span> <span class="sa">r</span><span class="s1">&#39;\1&#39;</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">reviews_df</span></div>
+
+
+<div class="viewcode-block" id="NlpService.remove_emoji">
+<a class="viewcode-back" href="../../../src.service.html#src.service.NlpService.NlpService.remove_emoji">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">remove_emoji</span><span class="p">(</span><span class="n">reviews_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove emoji from the text</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            reviews_df : DataFrame</span>
+<span class="sd">            label : str</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">reviews_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">reviews_df</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">emoji</span><span class="o">.</span><span class="n">replace_emoji</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">reviews_df</span></div>
+
+
+<div class="viewcode-block" id="NlpService.remove_emoticon_and_symbol">
+<a class="viewcode-back" href="../../../src.service.html#src.service.NlpService.NlpService.remove_emoticon_and_symbol">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">remove_emoticon_and_symbol</span><span class="p">(</span><span class="n">reviews_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove emoticon and symbol from the text</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            reviews_df : DataFrame</span>
+<span class="sd">            label : str</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">removal_func</span><span class="p">(</span><span class="n">text</span><span class="p">):</span>
+            <span class="n">emoticon_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s2">&quot;[&quot;</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\U0001F600</span><span class="s2">-</span><span class="se">\U0001F64F</span><span class="s2">&quot;</span>  <span class="c1"># emoticons</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\U0001F300</span><span class="s2">-</span><span class="se">\U0001F5FF</span><span class="s2">&quot;</span>  <span class="c1"># symbols &amp; pictographs</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\U0001F680</span><span class="s2">-</span><span class="se">\U0001F6FF</span><span class="s2">&quot;</span>  <span class="c1"># transport &amp; map symbols</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\U0001F1E0</span><span class="s2">-</span><span class="se">\U0001F1FF</span><span class="s2">&quot;</span>  <span class="c1"># flags (iOS)</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\U00002500</span><span class="s2">-</span><span class="se">\U00002BEF</span><span class="s2">&quot;</span>  <span class="c1"># chinese char</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\U00002702</span><span class="s2">-</span><span class="se">\U000027B0</span><span class="s2">&quot;</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\U00002702</span><span class="s2">-</span><span class="se">\U000027B0</span><span class="s2">&quot;</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\U000024C2</span><span class="s2">-</span><span class="se">\U0001F251</span><span class="s2">&quot;</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\U0001f926</span><span class="s2">-</span><span class="se">\U0001f937</span><span class="s2">&quot;</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\U00010000</span><span class="s2">-</span><span class="se">\U0010ffff</span><span class="s2">&quot;</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\u2640</span><span class="s2">-</span><span class="se">\u2642</span><span class="s2">&quot;</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\u2600</span><span class="s2">-</span><span class="se">\u2B55</span><span class="s2">&quot;</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\u200d</span><span class="s2">&quot;</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\u23cf</span><span class="s2">&quot;</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\u23e9</span><span class="s2">&quot;</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\u231a</span><span class="s2">&quot;</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\ufe0f</span><span class="s2">&quot;</span>  <span class="c1"># dingbats</span>
+                                          <span class="sa">u</span><span class="s2">&quot;</span><span class="se">\u3030</span><span class="s2">&quot;</span>
+                                          <span class="s2">&quot;]+&quot;</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">UNICODE</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">emoticon_pattern</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+
+        <span class="n">reviews_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">reviews_df</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">removal_func</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">reviews_df</span></div>
+
+
+<div class="viewcode-block" id="NlpService.remove_special_characters">
+<a class="viewcode-back" href="../../../src.service.html#src.service.NlpService.NlpService.remove_special_characters">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">remove_special_characters</span><span class="p">(</span><span class="n">reviews_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove special characters from the text</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            reviews_df : DataFrame</span>
+<span class="sd">            label : str</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># remove_tags_url_email</span>
+        <span class="c1"># remove_stopwords</span>
+        <span class="c1"># spell check</span>
+        <span class="n">reviews_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">reviews_df</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">NlpService</span><span class="o">.</span><span class="n">nlp</span><span class="p">)</span>
+        <span class="n">reviews_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">reviews_df</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">token</span><span class="o">.</span><span class="n">text</span>
+                                <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">x</span>
+                                <span class="k">if</span> <span class="ow">not</span> <span class="n">token</span><span class="o">.</span><span class="n">is_stop</span> <span class="ow">and</span>
+                                <span class="ow">not</span> <span class="n">token</span><span class="o">.</span><span class="n">like_email</span> <span class="ow">and</span>
+                                <span class="ow">not</span> <span class="n">token</span><span class="o">.</span><span class="n">like_url</span><span class="p">]</span>
+                               <span class="p">))</span>
+        <span class="k">return</span> <span class="n">reviews_df</span></div>
+
+
+<div class="viewcode-block" id="NlpService.filter_english_language">
+<a class="viewcode-back" href="../../../src.service.html#src.service.NlpService.NlpService.filter_english_language">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">filter_english_language</span><span class="p">(</span><span class="n">reviews_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Filter reviews in english</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            reviews_df : DataFrame</span>
+<span class="sd">            label : str</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">reviews_df</span> <span class="o">=</span> <span class="n">reviews_df</span><span class="p">[</span><span class="n">reviews_df</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">NlpService</span><span class="o">.</span><span class="n">is_english</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="n">reviews_df</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_preprocess_reviews</span><span class="p">(</span><span class="n">rev_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Preprocess reviews</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rev_df : DataFrame</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Remove punctuations</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Remove punctuations&quot;</span><span class="p">)</span>
+        <span class="n">rev_df</span> <span class="o">=</span> <span class="n">NlpService</span><span class="o">.</span><span class="n">remove_punctuation</span><span class="p">(</span><span class="n">rev_df</span><span class="p">,</span> <span class="s1">&#39;comments&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Remove numbers</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Remove numbers&quot;</span><span class="p">)</span>
+        <span class="n">rev_df</span> <span class="o">=</span> <span class="n">NlpService</span><span class="o">.</span><span class="n">remove_numbers</span><span class="p">(</span><span class="n">rev_df</span><span class="p">,</span> <span class="s1">&#39;comments&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Remove repeated characters</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Remove repeated characters&quot;</span><span class="p">)</span>
+        <span class="n">rev_df</span> <span class="o">=</span> <span class="n">NlpService</span><span class="o">.</span><span class="n">remove_repeated_punctuation</span><span class="p">(</span><span class="n">rev_df</span><span class="p">,</span> <span class="s1">&#39;comments&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Remove emoticons &amp; symbols</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Remove emoticons and symbols&quot;</span><span class="p">)</span>
+        <span class="n">rev_df</span> <span class="o">=</span> <span class="n">NlpService</span><span class="o">.</span><span class="n">remove_emoticon_and_symbol</span><span class="p">(</span><span class="n">rev_df</span><span class="p">,</span> <span class="s1">&#39;comments&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Remove tags</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Token filter&quot;</span><span class="p">)</span>
+        <span class="n">rev_df</span> <span class="o">=</span> <span class="n">NlpService</span><span class="o">.</span><span class="n">remove_special_characters</span><span class="p">(</span><span class="n">rev_df</span><span class="p">,</span> <span class="s1">&#39;comments&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Remove whitespaces</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Remove whitespaces&quot;</span><span class="p">)</span>
+        <span class="n">rev_df</span> <span class="o">=</span> <span class="n">NlpService</span><span class="o">.</span><span class="n">remove_whitespaces</span><span class="p">(</span><span class="n">rev_df</span><span class="p">,</span> <span class="s1">&#39;comments&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Remove repeated characters</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Remove repeated characters&quot;</span><span class="p">)</span>
+        <span class="n">rev_df</span> <span class="o">=</span> <span class="n">NlpService</span><span class="o">.</span><span class="n">remove_repeated_punctuation</span><span class="p">(</span><span class="n">rev_df</span><span class="p">,</span> <span class="s1">&#39;comments&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Lower case comments</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Lowered case&quot;</span><span class="p">)</span>
+        <span class="n">rev_df</span> <span class="o">=</span> <span class="n">NlpService</span><span class="o">.</span><span class="n">lower_case</span><span class="p">(</span><span class="n">rev_df</span><span class="p">,</span> <span class="s1">&#39;comments&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">rev_df</span>
+
+<div class="viewcode-block" id="NlpService.process_reviews">
+<a class="viewcode-back" href="../../../src.service.html#src.service.NlpService.NlpService.process_reviews">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">process_reviews</span><span class="p">(</span><span class="n">reviews_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Preprocess reviews</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            reviews_df : DataFrame</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># filter in language</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Filter comments in english&quot;</span><span class="p">)</span>
+        <span class="n">reviews_df</span> <span class="o">=</span> <span class="n">NlpService</span><span class="o">.</span><span class="n">filter_english_language</span><span class="p">(</span><span class="n">reviews_df</span><span class="p">,</span> <span class="s1">&#39;comments&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Preprocess reviews</span>
+        <span class="n">reviews_df</span> <span class="o">=</span> <span class="n">NlpService</span><span class="o">.</span><span class="n">_preprocess_reviews</span><span class="p">(</span><span class="n">reviews_df</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">reviews_df</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Jose Lopez.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

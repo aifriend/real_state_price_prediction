@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>src.models.predict_model &mdash; Real State Price Prediction 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Real State Price Prediction
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">real_state_price_prediction</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Real State Price Prediction</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">src.models.predict_model</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for src.models.predict_model</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span>
+
+<span class="kn">import</span> <span class="nn">click</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">dotenv</span> <span class="kn">import</span> <span class="n">find_dotenv</span><span class="p">,</span> <span class="n">load_dotenv</span>
+<span class="kn">from</span> <span class="nn">pandas</span> <span class="kn">import</span> <span class="n">DataFrame</span>
+<span class="kn">from</span> <span class="nn">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">IsolationForest</span>
+<span class="kn">from</span> <span class="nn">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">TfidfVectorizer</span>
+<span class="kn">from</span> <span class="nn">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LogisticRegression</span>
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">accuracy_score</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="nn">transformers</span> <span class="kn">import</span> <span class="n">BertTokenizer</span><span class="p">,</span> <span class="n">BertModel</span><span class="p">,</span> <span class="n">AutoTokenizer</span><span class="p">,</span> <span class="n">AutoModel</span>
+<span class="kn">from</span> <span class="nn">xgboost</span> <span class="kn">import</span> <span class="n">XGBRegressor</span>
+
+<span class="kn">from</span> <span class="nn">src.listing_etl_pipeline</span> <span class="kn">import</span> <span class="n">process_full_listings</span>
+<span class="kn">from</span> <span class="nn">src.review_etl_pipeline</span> <span class="kn">import</span> <span class="n">process_full_reviews</span>
+<span class="kn">from</span> <span class="nn">src.service.DataService</span> <span class="kn">import</span> <span class="n">DataService</span>
+<span class="kn">from</span> <span class="nn">src.service.EmbeddingService</span> <span class="kn">import</span> <span class="n">EmbeddingService</span>
+<span class="kn">from</span> <span class="nn">src.service.RentalLogger</span> <span class="kn">import</span> <span class="n">logger</span>
+<span class="kn">from</span> <span class="nn">src.service.TrainService</span> <span class="kn">import</span> <span class="n">TrainService</span>
+
+
+<div class="viewcode-block" id="predict_with_tuned_model">
+<a class="viewcode-back" href="../../../src.models.html#src.models.predict_model.predict_with_tuned_model">[docs]</a>
+<span class="k">def</span> <span class="nf">predict_with_tuned_model</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">X_test</span><span class="p">:</span> <span class="n">List</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Make predictions using the tuned model</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        model: The trained model</span>
+<span class="sd">        X_test: The test data</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        y_pred: The predicted values</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Make predictions using the tuned model</span>
+    <span class="n">y_pred</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">y_pred</span></div>
+
+
+
+<div class="viewcode-block" id="create_xgb_regressor">
+<a class="viewcode-back" href="../../../src.models.html#src.models.predict_model.create_xgb_regressor">[docs]</a>
+<span class="k">def</span> <span class="nf">create_xgb_regressor</span><span class="p">(</span>
+        <span class="n">root_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">colsample_bytree</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">min_child_weight</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">subsample</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">n_estimators</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">max_depth</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">gamma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create the best model using the best hyperparameters</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        root_dir: The project directory</span>
+<span class="sd">        colsample_bytree: The column subsample</span>
+<span class="sd">        min_child_weight: The minimum child weight</span>
+<span class="sd">        subsample: The subsample</span>
+<span class="sd">        n_estimators: The number of estimators</span>
+<span class="sd">        max_depth: The maximum depth</span>
+<span class="sd">        learning_rate: The learning rate</span>
+<span class="sd">        gamma: The gamma</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        model: The best model</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">XGBRegressor</span><span class="p">(</span>
+        <span class="n">colsample_bytree</span><span class="o">=</span><span class="n">colsample_bytree</span><span class="p">,</span>
+        <span class="n">min_child_weight</span><span class="o">=</span><span class="n">min_child_weight</span><span class="p">,</span>
+        <span class="n">subsample</span><span class="o">=</span><span class="n">subsample</span><span class="p">,</span>
+        <span class="n">n_estimators</span><span class="o">=</span><span class="n">n_estimators</span><span class="p">,</span>
+        <span class="n">max_depth</span><span class="o">=</span><span class="n">max_depth</span><span class="p">,</span>
+        <span class="n">learning_rate</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">,</span>
+        <span class="n">gamma</span><span class="o">=</span><span class="n">gamma</span>
+    <span class="p">)</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="n">DataService</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">root_dir</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">apex</span><span class="o">=</span><span class="s1">&#39;price_train&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">model</span></div>
+
+
+
+<div class="viewcode-block" id="predict_price_model">
+<a class="viewcode-back" href="../../../src.models.html#src.models.predict_model.predict_price_model">[docs]</a>
+<span class="k">def</span> <span class="nf">predict_price_model</span><span class="p">(</span><span class="n">output_filepath</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">parent</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">root_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The chosen model was an XGBoost regression model with the following hyperparameters:</span>
+<span class="sd">    n_estimators=400,</span>
+<span class="sd">    max_depth=5,</span>
+<span class="sd">    learning_rate=0.1,</span>
+<span class="sd">    subsample=0.9,</span>
+<span class="sd">    colsample_bytree=1.0,</span>
+<span class="sd">    min_child_weight=3,</span>
+<span class="sd">    gamma=0</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_filepath: The output filepath</span>
+<span class="sd">        parent: The parent process ID</span>
+<span class="sd">        root_dir: The project directory</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># load data</span>
+    <span class="n">listing_df</span> <span class="o">=</span> <span class="n">process_full_listings</span><span class="p">(</span>
+        <span class="n">store_path</span><span class="o">=</span><span class="n">output_filepath</span><span class="p">,</span> <span class="n">cached</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">)</span>
+
+    <span class="c1"># pre-processing for training</span>
+    <span class="n">Xtr</span><span class="p">,</span> <span class="n">Xts</span><span class="p">,</span> <span class="n">ytr</span><span class="p">,</span> <span class="n">yts</span> <span class="o">=</span> <span class="n">TrainService</span><span class="o">.</span><span class="n">pre_process_for</span><span class="p">(</span><span class="n">listing_df</span><span class="p">)</span>
+
+    <span class="c1"># Create the best model using the best hyperparameters</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;colsample_bytree&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="s1">&#39;gamma&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
+        <span class="s1">&#39;max_depth&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="s1">&#39;min_child_weight&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="s1">&#39;n_estimators&#39;</span><span class="p">:</span> <span class="mi">400</span><span class="p">,</span>
+        <span class="s1">&#39;subsample&#39;</span><span class="p">:</span> <span class="mf">0.9</span>
+    <span class="p">}</span>
+    <span class="n">best_model</span> <span class="o">=</span> <span class="n">create_xgb_regressor</span><span class="p">(</span><span class="n">root_dir</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">)</span>
+
+    <span class="c1"># Make predictions using the tuned model</span>
+    <span class="n">y_pred</span> <span class="o">=</span> <span class="n">predict_with_tuned_model</span><span class="p">(</span><span class="n">best_model</span><span class="p">,</span> <span class="n">Xts</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Evaluate the model&#39;s metrics&quot;</span><span class="p">)</span>
+    <span class="n">TrainService</span><span class="o">.</span><span class="n">rmse</span><span class="p">(</span><span class="n">best_model</span><span class="p">,</span> <span class="n">yts</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span>
+    <span class="n">TrainService</span><span class="o">.</span><span class="n">mape</span><span class="p">(</span><span class="n">best_model</span><span class="p">,</span> <span class="n">yts</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span>
+    <span class="n">TrainService</span><span class="o">.</span><span class="n">r2</span><span class="p">(</span><span class="n">best_model</span><span class="p">,</span> <span class="n">yts</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="predict_review_by_score_model">
+<a class="viewcode-back" href="../../../src.models.html#src.models.predict_model.predict_review_by_score_model">[docs]</a>
+<span class="k">def</span> <span class="nf">predict_review_by_score_model</span><span class="p">(</span><span class="n">review_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">root_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">parent</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The chosen model was an Isolation Forest model</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        review_df: The review dataframe</span>
+<span class="sd">        root_dir: The project directory</span>
+<span class="sd">        parent: The parent process ID</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        model: The best model</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Load the trained model</span>
+    <span class="n">classifier</span> <span class="o">=</span> <span class="n">LogisticRegression</span><span class="p">()</span>
+    <span class="n">classifier</span> <span class="o">=</span> <span class="n">DataService</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span>
+        <span class="n">classifier</span><span class="p">,</span> <span class="n">root_dir</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">apex</span><span class="o">=</span><span class="s1">&#39;review_train_score&#39;</span><span class="p">)</span>
+
+    <span class="c1"># embedding reviews</span>
+    <span class="n">emb_service</span> <span class="o">=</span> <span class="n">EmbeddingService</span><span class="p">()</span>
+    <span class="n">listings_reviews_df</span> <span class="o">=</span> <span class="n">emb_service</span><span class="o">.</span><span class="n">get_embeddings</span><span class="p">(</span><span class="n">review_df</span><span class="p">,</span> <span class="s1">&#39;comments&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Split the data into training and testing sets</span>
+    <span class="n">embeddings</span> <span class="o">=</span> <span class="n">listings_reviews_df</span><span class="p">[</span><span class="s1">&#39;comments_emb&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">listings_reviews_df</span><span class="p">[</span><span class="s1">&#39;review_scores_value&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span>
+        <span class="n">embeddings</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+
+    <span class="c1"># Make predictions using the trained model</span>
+    <span class="n">y_pred</span> <span class="o">=</span> <span class="n">classifier</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+
+    <span class="c1"># Evaluate the model&#39;s accuracy</span>
+    <span class="n">accuracy</span> <span class="o">=</span> <span class="n">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Accuracy: </span><span class="si">{</span><span class="n">accuracy</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="predict_review_outliers">
+<a class="viewcode-back" href="../../../src.models.html#src.models.predict_model.predict_review_outliers">[docs]</a>
+<span class="k">def</span> <span class="nf">predict_review_outliers</span><span class="p">(</span><span class="n">review_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    use the Isolation Forest algorithm to detect outlier reviews based on their embeddings.</span>
+<span class="sd">    The Isolation Forest is an unsupervised learning algorithm that isolates anomalies by</span>
+<span class="sd">    randomly selecting features and splitting the data recursively. It works well for</span>
+<span class="sd">    high-dimensional data like text embeddings.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        review_df: The reviews dataframe</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">get_outliers_tfidf_vectorizer</span><span class="p">(</span><span class="n">rev_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a TF-IDF vectorizer to generate embeddings</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rev_df (DataFrame): reviews dataframe</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            review_embeddings (np.ndarray): embeddings for each review</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Create a TF-IDF vectorizer to generate embeddings</span>
+        <span class="n">vectorizer</span> <span class="o">=</span> <span class="n">TfidfVectorizer</span><span class="p">()</span>
+
+        <span class="c1"># Generate embeddings for each review</span>
+        <span class="n">review_texts</span> <span class="o">=</span> <span class="p">[</span><span class="n">review</span> <span class="k">for</span> <span class="n">review</span> <span class="ow">in</span> <span class="n">rev_df</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]]</span>
+        <span class="n">review_embeddings</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">review_texts</span><span class="p">)</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">review_embeddings</span>
+
+    <span class="k">def</span> <span class="nf">get_outliers_bert_vectorizer</span><span class="p">(</span><span class="n">rev_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a BERT vectorizer to generate embeddings</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rev_df (DataFrame): reviews dataframe</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            review_embeddings (np.ndarray): embeddings for each review</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Load the BERT tokenizer and model</span>
+        <span class="n">tokenizer</span> <span class="o">=</span> <span class="n">BertTokenizer</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s1">&#39;bert-base-uncased&#39;</span><span class="p">)</span>
+        <span class="n">bert_model</span> <span class="o">=</span> <span class="n">BertModel</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s1">&#39;bert-base-uncased&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Generate BERT embeddings for each review</span>
+        <span class="n">review_embeddings</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">review</span> <span class="ow">in</span> <span class="n">rev_df</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]:</span>
+            <span class="n">encoded_input</span> <span class="o">=</span> <span class="n">tokenizer</span><span class="p">(</span><span class="n">review</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="s1">&#39;pt&#39;</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">truncation</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+                <span class="n">outputs</span> <span class="o">=</span> <span class="n">bert_model</span><span class="p">(</span><span class="o">**</span><span class="n">encoded_input</span><span class="p">)</span>
+                <span class="n">embedding</span> <span class="o">=</span> <span class="n">outputs</span><span class="o">.</span><span class="n">last_hidden_state</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+            <span class="n">review_embeddings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">embedding</span><span class="p">)</span>
+
+        <span class="c1"># Convert the embeddings to a numpy array</span>
+        <span class="n">review_embeddings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">review_embeddings</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">review_embeddings</span>
+
+    <span class="k">def</span> <span class="nf">get_outliers_hf_vectorizer</span><span class="p">(</span><span class="n">rev_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a Hugging Face vectorizer to generate embeddings</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rev_df (DataFrame): reviews dataframe</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            review_embeddings (np.ndarray): embeddings for each review</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Load a pre-trained tokenizer and model from Hugging Face</span>
+        <span class="n">tokenizer</span> <span class="o">=</span> <span class="n">AutoTokenizer</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s1">&#39;sentence-transformers/all-mpnet-base-v2&#39;</span><span class="p">)</span>
+        <span class="n">hf_model</span> <span class="o">=</span> <span class="n">AutoModel</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s1">&#39;sentence-transformers/all-mpnet-base-v2&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Generate embeddings for each review</span>
+        <span class="n">review_embeddings</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">review</span> <span class="ow">in</span> <span class="n">rev_df</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]:</span>
+            <span class="n">inputs</span> <span class="o">=</span> <span class="n">tokenizer</span><span class="p">(</span><span class="n">review</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">truncation</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="s1">&#39;pt&#39;</span><span class="p">)</span>
+            <span class="n">outputs</span> <span class="o">=</span> <span class="n">hf_model</span><span class="p">(</span><span class="o">**</span><span class="n">inputs</span><span class="p">)</span>
+            <span class="n">embedding</span> <span class="o">=</span> <span class="n">outputs</span><span class="o">.</span><span class="n">last_hidden_state</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+            <span class="n">review_embeddings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">embedding</span><span class="p">)</span>
+
+        <span class="n">review_embeddings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">review_embeddings</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">review_embeddings</span>
+
+    <span class="k">def</span> <span class="nf">isolate</span><span class="p">(</span><span class="n">review_list</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">rev_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">xgb_model</span><span class="p">:</span> <span class="n">IsolationForest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Train an Isolation Forest model</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            xgb_model (IsolationForest): Isolation Forest model</span>
+<span class="sd">            review_list (np.ndarray): embeddings for each review</span>
+<span class="sd">            rev_df (DataFrame): reviews dataframe</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Train an Isolation Forest model</span>
+        <span class="n">xgb_model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">review_list</span><span class="p">)</span>
+
+        <span class="c1"># Get outlier scores for each review</span>
+        <span class="n">outlier_scores</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">decision_function</span><span class="p">(</span><span class="n">review_list</span><span class="p">)</span>
+
+        <span class="c1"># Identify outliers based on the scores</span>
+        <span class="n">outlier_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">outlier_scores</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">outlier_reviews</span> <span class="o">=</span> <span class="n">rev_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">outlier_indices</span><span class="p">]</span>
+
+        <span class="c1"># Print the outlier reviews</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Outlier Reviews from TF-IDF:&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">review</span> <span class="ow">in</span> <span class="n">outlier_reviews</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Listing ID: </span><span class="si">{</span><span class="n">review</span><span class="p">[</span><span class="s1">&#39;listing_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Review Text: </span><span class="si">{</span><span class="n">review</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="n">IsolationForest</span><span class="p">(</span><span class="n">contamination</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+
+    <span class="c1"># Create a TF-IDF vectorizer to generate embeddings</span>
+    <span class="n">review_tfidf_embeddings</span> <span class="o">=</span> <span class="n">get_outliers_tfidf_vectorizer</span><span class="p">(</span><span class="n">review_df</span><span class="p">)</span>
+    <span class="n">isolate</span><span class="p">(</span><span class="n">review_tfidf_embeddings</span><span class="p">,</span> <span class="n">review_df</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+    <span class="c1"># Create a BERT vectorizer to generate embeddings</span>
+    <span class="n">review_bert_embeddings</span> <span class="o">=</span> <span class="n">get_outliers_bert_vectorizer</span><span class="p">(</span><span class="n">review_df</span><span class="p">)</span>
+    <span class="n">isolate</span><span class="p">(</span><span class="n">review_bert_embeddings</span><span class="p">,</span> <span class="n">review_df</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+    <span class="c1"># Create a vectorizer from HuggingFace to generate embeddings</span>
+    <span class="n">review_glove_embeddings</span> <span class="o">=</span> <span class="n">get_outliers_hf_vectorizer</span><span class="p">(</span><span class="n">review_df</span><span class="p">)</span>
+    <span class="n">isolate</span><span class="p">(</span><span class="n">review_glove_embeddings</span><span class="p">,</span> <span class="n">review_df</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span></div>
+
+
+
+<span class="nd">@click</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s1">&#39;output_filepath&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">click</span><span class="o">.</span><span class="n">Path</span><span class="p">())</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">output_filepath</span><span class="p">):</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Predict listings price...&#39;</span><span class="p">)</span>
+
+    <span class="n">predict_price_model</span><span class="p">(</span><span class="n">output_filepath</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">root_dir</span><span class="o">=</span><span class="n">project_dir</span><span class="p">)</span>
+
+    <span class="n">review_df</span> <span class="o">=</span> <span class="n">process_full_reviews</span><span class="p">(</span>
+        <span class="n">store_path</span><span class="o">=</span><span class="n">output_filepath</span><span class="p">,</span> <span class="n">cached</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">predict_review_by_score_model</span><span class="p">(</span><span class="n">review_df</span><span class="p">,</span> <span class="n">project_dir</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c1">#predict_review_outliers(review_df)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">log_fmt</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> - </span><span class="si">%(name)s</span><span class="s1"> - </span><span class="si">%(levelname)s</span><span class="s1"> - </span><span class="si">%(message)s</span><span class="s1">&#39;</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="n">log_fmt</span><span class="p">)</span>
+
+    <span class="c1"># not used in this stub but often useful for finding various files</span>
+    <span class="n">project_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+    <span class="c1"># find .env automagically by walking up directories until it&#39;s found, then</span>
+    <span class="c1"># load up the .env entries as environment variables</span>
+    <span class="n">load_dotenv</span><span class="p">(</span><span class="n">find_dotenv</span><span class="p">())</span>
+
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Jose Lopez.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

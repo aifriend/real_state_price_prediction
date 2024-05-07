@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>src.review_etl_pipeline &mdash; Real State Price Prediction 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=01f34227"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Real State Price Prediction
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">real_state_price_prediction</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Real State Price Prediction</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">src.review_etl_pipeline</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for src.review_etl_pipeline</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">pandas</span> <span class="kn">import</span> <span class="n">DataFrame</span>
+
+<span class="kn">from</span> <span class="nn">src.listing_etl_pipeline</span> <span class="kn">import</span> <span class="n">process_full_listings</span>
+<span class="kn">from</span> <span class="nn">src.service.DataService</span> <span class="kn">import</span> <span class="n">DataService</span>
+<span class="kn">from</span> <span class="nn">src.service.NlpService</span> <span class="kn">import</span> <span class="n">NlpService</span>
+<span class="kn">from</span> <span class="nn">src.service.RentalLogger</span> <span class="kn">import</span> <span class="n">logger</span>
+
+
+<span class="k">def</span> <span class="nf">_load_reviews</span><span class="p">(</span><span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load reviews</span>
+
+<span class="sd">    :param data_path: source data path</span>
+<span class="sd">    :return: dataframe of reviews</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reviews_path</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">data_path</span><span class="p">,</span> <span class="s2">&quot;reviews.csv&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">reviews_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Processed reviews not found.&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Load processed reviews from: </span><span class="si">{</span><span class="n">reviews_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">df1</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">reviews_path</span><span class="p">,</span> <span class="n">low_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">df1</span><span class="o">.</span><span class="n">head</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Convert object type columns to string</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Converting listings object type columns to string&quot;</span><span class="p">)</span>
+    <span class="n">df1</span> <span class="o">=</span> <span class="n">DataService</span><span class="o">.</span><span class="n">convert_object_to_string</span><span class="p">(</span><span class="n">df1</span><span class="p">)</span>
+
+    <span class="c1"># convert the &#39;last_review&#39; column to a date data type handling missing values</span>
+    <span class="n">df1</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df1</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">],</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;coerce&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Check missing values</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">df1</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">df1</span>
+
+
+<span class="k">def</span> <span class="nf">_load_reviews_desc</span><span class="p">(</span><span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+    <span class="n">review_desc_path</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">data_path</span><span class="p">,</span> <span class="s1">&#39;reviews.csv.gz&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">review_desc_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Processed review descriptions not found.&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Load processed review descriptions from: </span><span class="si">{</span><span class="n">review_desc_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">df2</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">review_desc_path</span><span class="p">,</span> <span class="n">low_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">df2</span><span class="o">.</span><span class="n">head</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Convert object type columns to string</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Converting listings_desc object type columns to string&quot;</span><span class="p">)</span>
+    <span class="n">df2</span> <span class="o">=</span> <span class="n">DataService</span><span class="o">.</span><span class="n">convert_object_to_string</span><span class="p">(</span><span class="n">df2</span><span class="p">)</span>
+
+    <span class="c1"># convert the &#39;last_review&#39; column to a date data type handling missing values</span>
+    <span class="n">df2</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df2</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">],</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;coerce&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Impute missing values</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">df2</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="c1"># fill reviewer_name with &#39;None&#39;</span>
+    <span class="n">df2</span><span class="p">[</span><span class="s1">&#39;reviewer_name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df2</span><span class="p">[</span><span class="s1">&#39;reviewer_name&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s1">&#39;None&#39;</span><span class="p">)</span>
+    <span class="c1"># fill comments with empty string</span>
+    <span class="n">df2</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df2</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="c1"># remove duplicated</span>
+    <span class="n">df2</span> <span class="o">=</span> <span class="n">df2</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">df2</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">df2</span>
+
+
+<div class="viewcode-block" id="get_full_reviews">
+<a class="viewcode-back" href="../../src.html#src.review_etl_pipeline.get_full_reviews">[docs]</a>
+<span class="k">def</span> <span class="nf">get_full_reviews</span><span class="p">(</span><span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get full reviews linked with review descriptions</span>
+
+<span class="sd">    :param data_path: source data path</span>
+<span class="sd">    :return: merged dataframe of reviews and review descriptions</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># m_df = DataService.merge_dataset(</span>
+    <span class="c1">#     _load_reviews(data_path),</span>
+    <span class="c1">#     _load_reviews_desc(data_path), on=&#39;listing_id&#39;)</span>
+    <span class="c1">#</span>
+    <span class="c1"># # Save the merged DataFrame to a new dataframe with the same name</span>
+    <span class="c1"># m_df = DataFrame(m_df)</span>
+
+    <span class="k">return</span> <span class="n">_load_reviews_desc</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="process_full_reviews">
+<a class="viewcode-back" href="../../src.html#src.review_etl_pipeline.process_full_reviews">[docs]</a>
+<span class="k">def</span> <span class="nf">process_full_reviews</span><span class="p">(</span>
+        <span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;data/interim&#39;</span><span class="p">,</span>
+        <span class="n">store_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;data/processed&#39;</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">cached</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">parent</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Process full reviews linked with review descriptions</span>
+
+<span class="sd">    :param data_path: source data path</span>
+<span class="sd">    :param store_path: destination data path</span>
+<span class="sd">    :param verbose: print logs</span>
+<span class="sd">    :param cached: set to True to use cached data already processed</span>
+<span class="sd">    :param parent: parent directory</span>
+<span class="sd">    :return: processed reviews</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">cached</span><span class="p">:</span>
+        <span class="c1"># if file exists, load it</span>
+        <span class="k">if</span> <span class="n">Path</span><span class="p">(</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">store_path</span><span class="p">,</span> <span class="s2">&quot;reviews.csv.gz&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Load processed reviews from: &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">store_path</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;reviews.csv.gz&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span>
+                <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span>
+                    <span class="n">store_path</span><span class="p">,</span> <span class="s2">&quot;reviews.csv.gz&quot;</span><span class="p">),</span> <span class="n">low_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processed reviews not found at &quot;</span>
+                             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">store_path</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;reviews.csv.gz&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># get full listing</span>
+    <span class="n">listings_df</span> <span class="o">=</span> <span class="n">process_full_listings</span><span class="p">(</span>
+        <span class="n">data_path</span><span class="o">=</span><span class="n">data_path</span><span class="p">,</span> <span class="n">store_path</span><span class="o">=</span><span class="n">store_path</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">)</span>
+
+    <span class="c1"># get full reviews</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">data_path</span><span class="p">,</span> <span class="s2">&quot;reviews.csv.gz&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Full reviews file missing: &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">data_path</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;reviews.csv.gz&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">reviews_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span>
+            <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span>
+                <span class="n">data_path</span><span class="p">,</span> <span class="s2">&quot;reviews.csv.gz&quot;</span><span class="p">),</span> <span class="n">low_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="c1"># merge listings and reviews</span>
+    <span class="n">reviews_listings_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="n">listings_df</span><span class="p">,</span> <span class="n">reviews_df</span><span class="p">,</span> <span class="n">left_on</span><span class="o">=</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="n">right_on</span><span class="o">=</span><span class="s1">&#39;listing_id&#39;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;inner&#39;</span><span class="p">)</span>
+
+    <span class="c1"># random sampling</span>
+    <span class="n">reviews_listings_df</span> <span class="o">=</span> <span class="n">reviews_listings_df</span><span class="p">[(</span><span class="n">reviews_listings_df</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">len</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">)]</span>
+    <span class="n">reviews_listings_df</span> <span class="o">=</span> <span class="n">reviews_listings_df</span><span class="p">[(</span><span class="n">reviews_listings_df</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">len</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">200</span><span class="p">)]</span>
+    <span class="c1"># sampling</span>
+    <span class="n">reviews_listings_df</span> <span class="o">=</span> <span class="n">reviews_listings_df</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="mi">50000</span><span class="p">)</span>  <span class="c1"># TODO: optimization</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">reviews_listings_df</span><span class="p">)</span><span class="si">}</span><span class="s2"> reviews...&quot;</span><span class="p">)</span>
+    <span class="n">merged_df</span> <span class="o">=</span> <span class="n">NlpService</span><span class="o">.</span><span class="n">process_reviews</span><span class="p">(</span><span class="n">reviews_listings_df</span><span class="p">)</span>
+
+    <span class="c1"># fill comments with empty string</span>
+    <span class="n">merged_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s1">&#39;comments&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">bfill</span><span class="p">()</span>
+    <span class="c1"># remove duplicated</span>
+    <span class="n">df2</span> <span class="o">=</span> <span class="n">merged_df</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span>
+    <span class="c1"># remove empty and too big</span>
+    <span class="n">merged_df</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[(</span><span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">len</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">)]</span>
+    <span class="n">merged_df</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[(</span><span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">len</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">200</span><span class="p">)]</span>
+    <span class="c1"># remove non string</span>
+    <span class="n">merged_df</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span>
+        <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">str</span><span class="p">))]</span>
+
+    <span class="c1"># save processed reviews</span>
+    <span class="n">merged_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span>
+        <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span>
+            <span class="n">store_path</span><span class="p">,</span> <span class="s2">&quot;reviews.csv.gz&quot;</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;gzip&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved to: </span><span class="si">{</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">store_path</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;reviews.csv.gz&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">merged_df</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="c1"># create linked reviews</span>
+    <span class="n">review_df</span> <span class="o">=</span> <span class="n">get_full_reviews</span><span class="p">(</span><span class="n">data_path</span><span class="o">=</span><span class="s1">&#39;data/raw&#39;</span><span class="p">)</span>
+    <span class="n">review_path</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="s1">&#39;data/interim&#39;</span><span class="p">,</span> <span class="s1">&#39;reviews.csv.gz&#39;</span><span class="p">)</span>
+    <span class="n">review_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">review_path</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;gzip&quot;</span><span class="p">)</span>
+
+    <span class="c1"># process full listing</span>
+    <span class="n">process_full_reviews</span><span class="p">(</span>
+        <span class="n">data_path</span><span class="o">=</span><span class="s1">&#39;data/interim&#39;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cached</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Jose Lopez.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
