@@ -1,19 +1,14 @@
 # -*- coding: utf-8 -*-
-import logging
 from pathlib import Path
 from typing import Any, List
 
 import click
 import numpy as np
-import torch
 from dotenv import find_dotenv, load_dotenv
 from pandas import DataFrame
-from sklearn.ensemble import IsolationForest
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
-from transformers import BertTokenizer, BertModel, AutoTokenizer, AutoModel
 from xgboost import XGBRegressor
 
 from src.listing_etl_pipeline import process_full_listings
@@ -145,7 +140,7 @@ def predict_review_by_score_model(review_df: DataFrame, root_dir: Path, parent: 
     # Load the trained model
     classifier = LogisticRegression()
     classifier = DataService.load_model(
-        classifier, root_dir, parent, apex='review_train_score')
+        classifier, root_dir, parent, apex='review_train_score_str')
 
     # embedding reviews
     emb_service = EmbeddingService()
@@ -165,155 +160,17 @@ def predict_review_by_score_model(review_df: DataFrame, root_dir: Path, parent: 
     logger.info(f"Accuracy: {accuracy:.2f}")
 
 
-def predict_review_outliers(review_df: DataFrame) -> None:
-    """
-    use the Isolation Forest algorithm to detect outlier reviews based on their embeddings.
-    The Isolation Forest is an unsupervised learning algorithm that isolates anomalies by
-    randomly selecting features and splitting the data recursively. It works well for
-    high-dimensional data like text embeddings.
-
-    Args:
-        review_df: The reviews dataframe
-
-    Returns:
-        None
-    """
-
-    def get_outliers_tfidf_vectorizer(rev_df: DataFrame) -> np.ndarray:
-        """
-        Create a TF-IDF vectorizer to generate embeddings
-
-        Args:
-            rev_df (DataFrame): reviews dataframe
-
-        Returns:
-            review_embeddings (np.ndarray): embeddings for each review
-        """
-        # Create a TF-IDF vectorizer to generate embeddings
-        vectorizer = TfidfVectorizer()
-
-        # Generate embeddings for each review
-        review_texts = [review for review in rev_df['comments']]
-        review_embeddings = vectorizer.fit_transform(review_texts).toarray()
-
-        return review_embeddings
-
-    def get_outliers_bert_vectorizer(rev_df: DataFrame) -> np.ndarray:
-        """
-        Create a BERT vectorizer to generate embeddings
-
-        Args:
-            rev_df (DataFrame): reviews dataframe
-
-        Returns:
-            review_embeddings (np.ndarray): embeddings for each review
-        """
-
-        # Load the BERT tokenizer and model
-        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        bert_model = BertModel.from_pretrained('bert-base-uncased')
-
-        # Generate BERT embeddings for each review
-        review_embeddings = []
-        for review in rev_df['comments']:
-            encoded_input = tokenizer(review, return_tensors='pt', padding=True, truncation=True)
-            with torch.no_grad():
-                outputs = bert_model(**encoded_input)
-                embedding = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
-            review_embeddings.append(embedding)
-
-        # Convert the embeddings to a numpy array
-        review_embeddings = np.array(review_embeddings)
-        return review_embeddings
-
-    def get_outliers_hf_vectorizer(rev_df: DataFrame) -> np.ndarray:
-        """
-        Create a Hugging Face vectorizer to generate embeddings
-
-        Args:
-            rev_df (DataFrame): reviews dataframe
-
-        Returns:
-            review_embeddings (np.ndarray): embeddings for each review
-        """
-
-        # Load a pre-trained tokenizer and model from Hugging Face
-        tokenizer = AutoTokenizer.from_pretrained('sentence-transformers/all-mpnet-base-v2')
-        hf_model = AutoModel.from_pretrained('sentence-transformers/all-mpnet-base-v2')
-
-        # Generate embeddings for each review
-        review_embeddings = []
-        for review in rev_df['comments']:
-            inputs = tokenizer(review, padding=True, truncation=True, return_tensors='pt')
-            outputs = hf_model(**inputs)
-            embedding = outputs.last_hidden_state.mean(dim=1).detach().numpy()
-            review_embeddings.append(embedding)
-
-        review_embeddings = np.vstack(review_embeddings)
-        return review_embeddings
-
-    def isolate(review_list: np.ndarray, rev_df: DataFrame, xgb_model: IsolationForest) -> None:
-        """
-        Train an Isolation Forest model
-
-        Args:
-            xgb_model (IsolationForest): Isolation Forest model
-            review_list (np.ndarray): embeddings for each review
-            rev_df (DataFrame): reviews dataframe
-
-        Returns:
-            None
-        """
-        # Train an Isolation Forest model
-        xgb_model.fit(review_list)
-
-        # Get outlier scores for each review
-        outlier_scores = model.decision_function(review_list)
-
-        # Identify outliers based on the scores
-        outlier_indices = np.where(outlier_scores < 0)[0]
-        outlier_reviews = rev_df.iloc[outlier_indices]
-
-        # Print the outlier reviews
-        logger.info("Outlier Reviews from TF-IDF:")
-        for index, review in outlier_reviews.iterrows():
-            logger.info(f"Listing ID: {review['listing_id']}")
-            logger.info(f"Review Text: {review['comments']}")
-
-    model = IsolationForest(contamination=0.1, random_state=42)
-
-    # Create a TF-IDF vectorizer to generate embeddings
-    review_tfidf_embeddings = get_outliers_tfidf_vectorizer(review_df)
-    isolate(review_tfidf_embeddings, review_df, model)
-
-    # Create a BERT vectorizer to generate embeddings
-    review_bert_embeddings = get_outliers_bert_vectorizer(review_df)
-    isolate(review_bert_embeddings, review_df, model)
-
-    # Create a vectorizer from HuggingFace to generate embeddings
-    review_glove_embeddings = get_outliers_hf_vectorizer(review_df)
-    isolate(review_glove_embeddings, review_df, model)
-
-
 @click.command()
 @click.argument('output_filepath', type=click.Path())
 def main(output_filepath):
-    logger = logging.getLogger(__name__)
-    logger.info('Predict listings price...')
-
-    predict_price_model(output_filepath, parent=1, root_dir=project_dir)
-
     review_df = process_full_reviews(
         store_path=output_filepath, cached=True, parent=1)
 
+    predict_price_model(output_filepath, parent=1, root_dir=project_dir)
     predict_review_by_score_model(review_df, project_dir, parent=1)
-    #predict_review_outliers(review_df)
 
 
 if __name__ == '__main__':
-    log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    logging.basicConfig(level=logging.INFO, format=log_fmt)
-
     # not used in this stub but often useful for finding various files
     project_dir = Path(__file__).resolve().parents[2]
 

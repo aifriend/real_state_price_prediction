@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import logging
 from pathlib import Path
 
 import click
@@ -15,10 +14,6 @@ def main(output_filepath):
     """ Runs data analysis scripts to turn features data from (saved in ../processed)
     into meaningful data ready to be shown.
     """
-    logger = logging.getLogger(__name__)
-    logger.info('I explored the data to check if there are trends between '
-                'the explanatory variables and the target variable.')
-
     dea_df = process_full_reviews(
         store_path=output_filepath, cached=True, verbose=False)
 
@@ -29,9 +24,6 @@ def main(output_filepath):
 
 
 if __name__ == '__main__':
-    log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    logging.basicConfig(level=logging.INFO, format=log_fmt)
-
     # not used in this stub but often useful for finding various files
     project_dir = Path(__file__).resolve().parents[2]
 

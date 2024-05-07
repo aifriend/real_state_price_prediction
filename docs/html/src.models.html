@@ -156,21 +156,6 @@ parent: The parent process ID</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="src.models.predict_model.predict_review_outliers">
-<span class="sig-prename descclassname"><span class="pre">src.models.predict_model.</span></span><span class="sig-name descname"><span class="pre">predict_review_outliers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">review_df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/src/models/predict_model.html#predict_review_outliers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.models.predict_model.predict_review_outliers" title="Link to this definition"></a></dt>
-<dd><p>use the Isolation Forest algorithm to detect outlier reviews based on their embeddings.
-The Isolation Forest is an unsupervised learning algorithm that isolates anomalies by
-randomly selecting features and splitting the data recursively. It works well for
-high-dimensional data like text embeddings.</p>
-<dl class="simple">
-<dt>Args:</dt><dd><p>review_df: The reviews dataframe</p>
-</dd>
-<dt>Returns:</dt><dd><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
 <dt class="sig sig-object py" id="src.models.predict_model.predict_with_tuned_model">
 <span class="sig-prename descclassname"><span class="pre">src.models.predict_model.</span></span><span class="sig-name descname"><span class="pre">predict_with_tuned_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">array</span></span></span><a class="reference internal" href="_modules/src/models/predict_model.html#predict_with_tuned_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.models.predict_model.predict_with_tuned_model" title="Link to this definition"></a></dt>
 <dd><p>Make predictions using the tuned model</p>
@@ -186,6 +171,21 @@ X_test: The test data</p>
 </section>
 <section id="module-src.models.train_model">
 <span id="src-models-train-model-module"></span><h2>src.models.train_model module<a class="headerlink" href="#module-src.models.train_model" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="src.models.train_model.predict_review_outliers">
+<span class="sig-prename descclassname"><span class="pre">src.models.train_model.</span></span><span class="sig-name descname"><span class="pre">predict_review_outliers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">review_df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/src/models/train_model.html#predict_review_outliers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.models.train_model.predict_review_outliers" title="Link to this definition"></a></dt>
+<dd><p>use the Isolation Forest algorithm to detect outlier reviews based on their embeddings.
+The Isolation Forest is an unsupervised learning algorithm that isolates anomalies by
+randomly selecting features and splitting the data recursively. It works well for
+high-dimensional data like text embeddings.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>review_df: The reviews dataframe</p>
+</dd>
+<dt>Returns:</dt><dd><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py function">
 <dt class="sig sig-object py" id="src.models.train_model.train_price_model">
 <span class="sig-prename descclassname"><span class="pre">src.models.train_model.</span></span><span class="sig-name descname"><span class="pre">train_price_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimization</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/src/models/train_model.html#train_price_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.models.train_model.train_price_model" title="Link to this definition"></a></dt>

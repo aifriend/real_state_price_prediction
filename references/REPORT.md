@@ -4,7 +4,7 @@
 This report analyzes Airbnb rental data for the city of Madrid, with the goal of predicting rental prices for a client's properties located in various neighborhoods. The data comes from the Inside Airbnb project. 
 
 ## Data Exploration
-- Key features include: neighborhood, property type, number of bedrooms, number of bathrooms, amenities, review scores, etc.
+- Key features include: neighborhood, property type, number of bedrooms, number of bathrooms, amenities, review scores,...
 - The target variable is the rental price per night
 - Larger properties with more bedrooms and bathrooms tend to have higher rental prices
 - Listings with higher review scores also correlate with higher prices

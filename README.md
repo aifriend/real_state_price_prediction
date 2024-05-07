@@ -14,11 +14,11 @@ Setup:
 
 Loading and preparation of data:
 
-    make data $(PROJECT_DIR)/data/raw $(PROJECT_DIR)/data/interim
+    make data /PROJECT_DIR/data/raw /PROJECT_DIR/data/interim
 
 ## Feature extraction
 
-    make features $(PROJECT_DIR)/data/interim $(PROJECT_DIR)/data/processed
+    make features /PROJECT_DIR/data/interim /PROJECT_DIR/data/processed
 
 ## Analysis
 
@@ -29,6 +29,7 @@ Loading and preparation of data:
   * Making use of geospatial data and/or natural language.
 
 #### Features
+![features_significance.png](reports/figures/features_significance.png)
 ![feature_corr_heatmap.png](reports/figures/feature_corr_heatmap.png)
 ![corr_heatmap.png](reports/figures/corr_heatmap.png)
 
@@ -67,8 +68,8 @@ Loading and preparation of data:
   * evaluation metric/s, model selection/s
 
 
-    make train $(PROJECT_DIR)/data/processed
-    make predict $(PROJECT_DIR)/data/processed
+    make train /PROJECT_DIR/data/processed
+    make predict /PROJECT_DIR/data/processed
 
 
 ## Deployment

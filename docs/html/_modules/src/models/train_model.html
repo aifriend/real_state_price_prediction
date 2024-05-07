@@ -72,11 +72,17 @@
              
   <h1>Source code for src.models.train_model</h1><div class="highlight"><pre>
 <span></span><span class="c1"># -*- coding: utf-8 -*-</span>
-<span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
 
 <span class="kn">import</span> <span class="nn">click</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">dotenv</span> <span class="kn">import</span> <span class="n">find_dotenv</span><span class="p">,</span> <span class="n">load_dotenv</span>
+<span class="kn">from</span> <span class="nn">pandas</span> <span class="kn">import</span> <span class="n">DataFrame</span>
+<span class="kn">from</span> <span class="nn">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">IsolationForest</span>
+<span class="kn">from</span> <span class="nn">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">TfidfVectorizer</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">from</span> <span class="nn">transformers</span> <span class="kn">import</span> <span class="n">BertTokenizer</span><span class="p">,</span> <span class="n">BertModel</span><span class="p">,</span> <span class="n">AutoTokenizer</span><span class="p">,</span> <span class="n">AutoModel</span>
 
 <span class="kn">from</span> <span class="nn">src.listing_etl_pipeline</span> <span class="kn">import</span> <span class="n">process_full_listings</span>
 <span class="kn">from</span> <span class="nn">src.review_etl_pipeline</span> <span class="kn">import</span> <span class="n">process_full_reviews</span>
@@ -121,25 +127,171 @@
 
 
 
+<div class="viewcode-block" id="predict_review_outliers">
+<a class="viewcode-back" href="../../../src.models.html#src.models.train_model.predict_review_outliers">[docs]</a>
+<span class="k">def</span> <span class="nf">predict_review_outliers</span><span class="p">(</span><span class="n">review_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    use the Isolation Forest algorithm to detect outlier reviews based on their embeddings.</span>
+<span class="sd">    The Isolation Forest is an unsupervised learning algorithm that isolates anomalies by</span>
+<span class="sd">    randomly selecting features and splitting the data recursively. It works well for</span>
+<span class="sd">    high-dimensional data like text embeddings.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        review_df: The reviews dataframe</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">get_outliers_tfidf_vectorizer</span><span class="p">(</span><span class="n">rev_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a TF-IDF vectorizer to generate embeddings</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rev_df (DataFrame): reviews dataframe</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            review_embeddings (np.ndarray): embeddings for each review</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Create a TF-IDF vectorizer to generate embeddings&quot;</span><span class="p">)</span>
+        <span class="c1"># Create a TF-IDF vectorizer to generate embeddings</span>
+        <span class="n">vectorizer</span> <span class="o">=</span> <span class="n">TfidfVectorizer</span><span class="p">()</span>
+
+        <span class="c1"># Generate embeddings for each review</span>
+        <span class="n">review_texts</span> <span class="o">=</span> <span class="p">[</span><span class="n">review</span> <span class="k">for</span> <span class="n">review</span> <span class="ow">in</span> <span class="n">rev_df</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]]</span>
+        <span class="n">review_embeddings</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">review_texts</span><span class="p">)</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">review_embeddings</span>
+
+    <span class="k">def</span> <span class="nf">get_outliers_bert_vectorizer</span><span class="p">(</span><span class="n">rev_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a BERT vectorizer to generate embeddings</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rev_df (DataFrame): reviews dataframe</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            review_embeddings (np.ndarray): embeddings for each review</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Create a BERT vectorizer to generate embeddings&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Load the BERT tokenizer and model</span>
+        <span class="n">tokenizer</span> <span class="o">=</span> <span class="n">BertTokenizer</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s1">&#39;bert-base-uncased&#39;</span><span class="p">)</span>
+        <span class="n">bert_model</span> <span class="o">=</span> <span class="n">BertModel</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s1">&#39;bert-base-uncased&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Generate BERT embeddings for each review</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cuda&#39;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+        <span class="n">bert_model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">32</span>
+        <span class="n">num_reviews</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rev_df</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">])</span>
+        <span class="n">review_embeddings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_reviews</span><span class="p">,</span> <span class="n">bert_model</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">num_reviews</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">)):</span>
+            <span class="n">batch_reviews</span> <span class="o">=</span> <span class="n">rev_df</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="n">batch_size</span><span class="p">]</span>
+            <span class="n">encoded_input</span> <span class="o">=</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">batch_encode_plus</span><span class="p">(</span>
+                <span class="n">batch_reviews</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="s1">&#39;pt&#39;</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">truncation</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">encoded_input</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">encoded_input</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+            <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+                <span class="n">outputs</span> <span class="o">=</span> <span class="n">bert_model</span><span class="p">(</span><span class="o">**</span><span class="n">encoded_input</span><span class="p">)</span>
+                <span class="n">embeddings</span> <span class="o">=</span> <span class="n">outputs</span><span class="o">.</span><span class="n">last_hidden_state</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+            <span class="n">review_embeddings</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">batch_reviews</span><span class="p">)]</span> <span class="o">=</span> <span class="n">embeddings</span>
+
+        <span class="c1"># Convert the embeddings to a numpy array</span>
+        <span class="n">review_embeddings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">review_embeddings</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">review_embeddings</span>
+
+    <span class="k">def</span> <span class="nf">get_outliers_hf_vectorizer</span><span class="p">(</span><span class="n">rev_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a Hugging Face vectorizer to generate embeddings</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rev_df (DataFrame): reviews dataframe</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            review_embeddings (np.ndarray): embeddings for each review</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Create a Hugging Face vectorizer to generate embeddings&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Load a pre-trained tokenizer and model from Hugging Face</span>
+        <span class="n">tokenizer</span> <span class="o">=</span> <span class="n">AutoTokenizer</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s1">&#39;sentence-transformers/all-mpnet-base-v2&#39;</span><span class="p">)</span>
+        <span class="n">hf_model</span> <span class="o">=</span> <span class="n">AutoModel</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s1">&#39;sentence-transformers/all-mpnet-base-v2&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Generate embeddings for each review</span>
+        <span class="n">review_embeddings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">rev_df</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]),</span> <span class="n">hf_model</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">))</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">rev_df</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">32</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">rev_df</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]),</span> <span class="n">batch_size</span><span class="p">)):</span>
+            <span class="n">batch_reviews</span> <span class="o">=</span> <span class="n">rev_df</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="n">batch_size</span><span class="p">]</span>
+            <span class="n">inputs</span> <span class="o">=</span> <span class="n">tokenizer</span><span class="p">(</span><span class="n">batch_reviews</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">truncation</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="s1">&#39;pt&#39;</span><span class="p">)</span>
+            <span class="n">outputs</span> <span class="o">=</span> <span class="n">hf_model</span><span class="p">(</span><span class="o">**</span><span class="n">inputs</span><span class="p">)</span>
+            <span class="n">embeddings</span> <span class="o">=</span> <span class="n">outputs</span><span class="o">.</span><span class="n">last_hidden_state</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+            <span class="n">review_embeddings</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="n">batch_size</span><span class="p">]</span> <span class="o">=</span> <span class="n">embeddings</span>
+
+        <span class="n">review_embeddings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">review_embeddings</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">review_embeddings</span>
+
+    <span class="k">def</span> <span class="nf">isolate</span><span class="p">(</span><span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">review_list</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">rev_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">xgb_model</span><span class="p">:</span> <span class="n">IsolationForest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Train an Isolation Forest model</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model_name (str): Model name</span>
+<span class="sd">            xgb_model (IsolationForest): Isolation Forest model</span>
+<span class="sd">            review_list (np.ndarray): embeddings for each review</span>
+<span class="sd">            rev_df (DataFrame): reviews dataframe</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Train an Isolation Forest model for </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Train an Isolation Forest model</span>
+        <span class="n">xgb_model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">review_list</span><span class="p">)</span>
+
+        <span class="c1"># Get outlier scores for each review</span>
+        <span class="n">outlier_scores</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">decision_function</span><span class="p">(</span><span class="n">review_list</span><span class="p">)</span>
+
+        <span class="c1"># Identify outliers based on the scores</span>
+        <span class="n">outlier_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">outlier_scores</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">outlier_reviews</span> <span class="o">=</span> <span class="n">rev_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">outlier_indices</span><span class="p">]</span>
+
+        <span class="c1"># Print the outlier reviews</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Outlier Reviews from </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">review</span> <span class="ow">in</span> <span class="n">outlier_reviews</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Listing ID: </span><span class="si">{</span><span class="n">review</span><span class="p">[</span><span class="s1">&#39;listing_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Review Text: </span><span class="si">{</span><span class="n">review</span><span class="p">[</span><span class="s1">&#39;comments&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">index</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="k">break</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="n">IsolationForest</span><span class="p">(</span><span class="n">contamination</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+
+    <span class="c1"># Create a TF-IDF vectorizer to generate embeddings</span>
+    <span class="n">review_tfidf_embeddings</span> <span class="o">=</span> <span class="n">get_outliers_tfidf_vectorizer</span><span class="p">(</span><span class="n">review_df</span><span class="p">)</span>
+    <span class="n">isolate</span><span class="p">(</span><span class="s1">&#39;TF-IDF&#39;</span><span class="p">,</span> <span class="n">review_tfidf_embeddings</span><span class="p">,</span> <span class="n">review_df</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+    <span class="c1"># Create a BERT vectorizer to generate embeddings</span>
+    <span class="n">review_bert_embeddings</span> <span class="o">=</span> <span class="n">get_outliers_bert_vectorizer</span><span class="p">(</span><span class="n">review_df</span><span class="p">)</span>
+    <span class="n">isolate</span><span class="p">(</span><span class="s1">&#39;BERT&#39;</span><span class="p">,</span> <span class="n">review_bert_embeddings</span><span class="p">,</span> <span class="n">review_df</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+    <span class="c1"># Create a vectorizer from HuggingFace to generate embeddings</span>
+    <span class="n">review_glove_embeddings</span> <span class="o">=</span> <span class="n">get_outliers_hf_vectorizer</span><span class="p">(</span><span class="n">review_df</span><span class="p">)</span>
+    <span class="n">isolate</span><span class="p">(</span><span class="s1">&#39;HuggingFace&#39;</span><span class="p">,</span> <span class="n">review_glove_embeddings</span><span class="p">,</span> <span class="n">review_df</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span></div>
+
+
+
 <span class="nd">@click</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s1">&#39;output_filepath&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">click</span><span class="o">.</span><span class="n">Path</span><span class="p">())</span>
 <span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">output_filepath</span><span class="p">):</span>
-    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Training models...&#39;</span><span class="p">)</span>
-
-    <span class="n">train_price_model</span><span class="p">(</span><span class="n">output_filepath</span><span class="p">,</span> <span class="n">project_dir</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># train_price_model(output_filepath, project_dir, parent=1)</span>
 
     <span class="n">review_df</span> <span class="o">=</span> <span class="n">process_full_reviews</span><span class="p">(</span>
         <span class="n">store_path</span><span class="o">=</span><span class="n">output_filepath</span><span class="p">,</span> <span class="n">cached</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
-    <span class="n">TrainService</span><span class="o">.</span><span class="n">train_reviews_by_score</span><span class="p">(</span><span class="n">review_df</span><span class="p">,</span> <span class="n">project_dir</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">TrainService</span><span class="o">.</span><span class="n">train_review_sentiment_analysis</span><span class="p">(</span><span class="n">review_df</span><span class="p">,</span> <span class="n">project_dir</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># TrainService.train_reviews_by_score(review_df, project_dir, parent=1)</span>
+    <span class="c1"># TrainService.train_review_sentiment_analysis(review_df, project_dir, parent=1)</span>
+    <span class="n">predict_review_outliers</span><span class="p">(</span><span class="n">review_df</span><span class="p">)</span>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
-    <span class="n">log_fmt</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> - </span><span class="si">%(name)s</span><span class="s1"> - </span><span class="si">%(levelname)s</span><span class="s1"> - </span><span class="si">%(message)s</span><span class="s1">&#39;</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="n">log_fmt</span><span class="p">)</span>
-
     <span class="c1"># not used in this stub but often useful for finding various files</span>
     <span class="n">project_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
 

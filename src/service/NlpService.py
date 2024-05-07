@@ -4,6 +4,7 @@ import string
 import emoji
 import spacy
 from pandas import DataFrame
+from pandas_parallel_apply import DataFrameParallel
 from parallel_pandas import ParallelPandas
 from spellchecker import SpellChecker
 
@@ -211,7 +212,8 @@ class NlpService:
         # remove_tags_url_email
         # remove_stopwords
         # spell check
-        reviews_df.loc[:, label] = reviews_df[label].apply(NlpService.nlp)
+        reviews_df.loc[:, label] = DataFrameParallel(
+            reviews_df, n_cores=2)[label].apply(NlpService.nlp)
         reviews_df.loc[:, label] = reviews_df[label].apply(
             lambda x: ' '.join([token.text
                                 for token in x
