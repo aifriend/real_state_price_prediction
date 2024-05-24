@@ -139,8 +139,7 @@ def process_full_listings(
 
     # Impute missing values
     logger.info("Imputing missing values")
-    if verbose:
-        logger.info(f"Nullable: {merged_df.isna().sum()}")
+
     # Fill NaN values with 0.0 make sense where number_of_reviews == 0
     merged_df['reviews_per_month'] = merged_df['reviews_per_month'].fillna(0.0)
 

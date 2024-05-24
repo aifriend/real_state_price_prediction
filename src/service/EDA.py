@@ -187,17 +187,9 @@ class EDA:
         # Select numerical columns
         numerical_columns = df.select_dtypes(include=['int', 'float'])
 
-        # Select categorical columns
-        categorical_columns = df.select_dtypes(include=['category'])
-        # Apply LabelEncoder to the categorical column
-        label_encoder = LabelEncoder()
-        for column in categorical_columns.columns:
-            categorical_columns[column] = (
-                label_encoder.fit_transform(categorical_columns[column]))
-
         c = pd.concat([numerical_columns], axis=1)
         plt.figure(figsize=(30, 12))
-        plt.title("A heatmap showing correlation between the features")
+        plt.title("A heatmap showing correlation between features")
         sns.heatmap(c.corr(), annot=True)
         plt.show()
 
@@ -575,32 +567,20 @@ class EDA:
         # Get the center coordinates of the property locations
         center_lat = property_gdf.geometry.centroid.y.mean()
         center_lon = property_gdf.geometry.centroid.x.mean()
+
         # Create a Folium map centered on the mean coordinates
         map_center = [center_lat, center_lon]
         map_zoom = 12
         folium_map = folium.Map(location=map_center, zoom_start=map_zoom)
+
         # Add property locations as markers to the map
         for idx, row in property_gdf.iterrows():
             location = [row.geometry.centroid.y, row.geometry.centroid.x]
             popup_text = (f"Property Neighbourhood Location: {row['neighbourhood']}<br>"
                           f"Property Neighbourhood Area: {row['neighbourhood_group']}")
             folium.Marker(location=location, popup=popup_text).add_to(folium_map)
+
         # Save the map to an HTML file
         folium_map.save(
             Path.cwd().parents[1].joinpath(
                 "reports/figures", "property_map.html"))
-
-
-if __name__ == '__main__':
-    """
-    I explored the data to check if there are trends between
-    the explanatory variables and the target variable.
-    """
-    dea_df = process_full_reviews(
-        store_path='../data/processed', cached=True, verbose=False)
-
-    EDA.feature_correlation_analysis(dea_df)
-    EDA.feature_exploratory_analysis(dea_df, output_path='../data/processed')
-    EDA.neighborhood_analysis(dea_df)
-    EDA.review_analysis(dea_df)
-    # EDA.geomap()

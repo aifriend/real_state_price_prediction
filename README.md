@@ -1,8 +1,8 @@
-# KEEPLER Technical Test
+# Technical Challenge
 
 ## Documentation
 
-[html](docs%2Fhtml)
+[index.html](docs%2Fhtml)
 
 ## Environment
 

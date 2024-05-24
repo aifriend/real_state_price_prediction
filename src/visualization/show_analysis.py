@@ -5,7 +5,7 @@ import click
 from dotenv import find_dotenv, load_dotenv
 
 from src.review_etl_pipeline import process_full_reviews
-from src.visualization.visualize import EDA
+from src.service.EDA import EDA
 
 
 @click.command()

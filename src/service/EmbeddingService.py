@@ -8,12 +8,11 @@ class EmbeddingService:
     The class provides methods to generate embeddings for the text data.
     The embeddings are generated using Sentence Transformers
     (https://github.com/UKPLab/sentence-transformers)
-    and stored in a new column 'comments_emb'
     """
 
     def __init__(self):
         """
-        Initialize the model
+        Initialize the model with 384 dimensions
         """
         self.model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 

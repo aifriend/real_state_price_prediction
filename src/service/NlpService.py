@@ -239,51 +239,6 @@ class NlpService:
         return reviews_df
 
     @staticmethod
-    def _preprocess_reviews(rev_df: DataFrame) -> DataFrame:
-        """
-        Preprocess reviews
-
-        Args:
-            rev_df : DataFrame
-
-        Returns:
-            DataFrame
-        """
-        # Remove punctuations
-        logger.info("Remove punctuations")
-        rev_df = NlpService.remove_punctuation(rev_df, 'comments')
-
-        # Remove numbers
-        logger.info("Remove numbers")
-        rev_df = NlpService.remove_numbers(rev_df, 'comments')
-
-        # Remove repeated characters
-        logger.info("Remove repeated characters")
-        rev_df = NlpService.remove_repeated_punctuation(rev_df, 'comments')
-
-        # Remove emoticons & symbols
-        logger.info("Remove emoticons and symbols")
-        rev_df = NlpService.remove_emoticon_and_symbol(rev_df, 'comments')
-
-        # Remove tags
-        logger.info("Token filter")
-        rev_df = NlpService.remove_special_characters(rev_df, 'comments')
-
-        # Remove whitespaces
-        logger.info("Remove whitespaces")
-        rev_df = NlpService.remove_whitespaces(rev_df, 'comments')
-
-        # Remove repeated characters
-        logger.info("Remove repeated characters")
-        rev_df = NlpService.remove_repeated_punctuation(rev_df, 'comments')
-
-        # Lower case comments
-        logger.info("Lowered case")
-        rev_df = NlpService.lower_case(rev_df, 'comments')
-
-        return rev_df
-
-    @staticmethod
     def process_reviews(reviews_df: DataFrame) -> DataFrame:
         """
         Preprocess reviews
@@ -299,6 +254,36 @@ class NlpService:
         reviews_df = NlpService.filter_english_language(reviews_df, 'comments')
 
         # Preprocess reviews
-        reviews_df = NlpService._preprocess_reviews(reviews_df)
+        # Remove punctuations
+        logger.info("Remove punctuations")
+        reviews_df = NlpService.remove_punctuation(reviews_df, 'comments')
+
+        # Remove numbers
+        logger.info("Remove numbers")
+        reviews_df = NlpService.remove_numbers(reviews_df, 'comments')
+
+        # Remove repeated characters
+        logger.info("Remove repeated characters")
+        reviews_df = NlpService.remove_repeated_punctuation(reviews_df, 'comments')
+
+        # Remove emoticons & symbols
+        logger.info("Remove emoticons and symbols")
+        reviews_df = NlpService.remove_emoticon_and_symbol(reviews_df, 'comments')
+
+        # Remove tags
+        logger.info("Token filter")
+        reviews_df = NlpService.remove_special_characters(reviews_df, 'comments')
+
+        # Remove whitespaces
+        logger.info("Remove whitespaces")
+        reviews_df = NlpService.remove_whitespaces(reviews_df, 'comments')
+
+        # Remove repeated characters
+        logger.info("Remove repeated characters")
+        reviews_df = NlpService.remove_repeated_punctuation(reviews_df, 'comments')
+
+        # Lower case comments
+        logger.info("Lowered case")
+        reviews_df = NlpService.lower_case(reviews_df, 'comments')
 
         return reviews_df

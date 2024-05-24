@@ -130,19 +130,23 @@ def process_full_reviews(
     # random sampling
     reviews_listings_df = reviews_listings_df[(reviews_listings_df['comments'].str.len() > 100)]
     reviews_listings_df = reviews_listings_df[(reviews_listings_df['comments'].str.len() < 200)]
+
     # sampling
     reviews_listings_df = reviews_listings_df.sample(50000)  # TODO: optimization
 
     logger.info(f"Process {len(reviews_listings_df)} reviews...")
-    merged_df = NlpService.process_reviews(reviews_listings_df)
+    merged_df = NlpService.process_reviews(reviews_listings_df)  # feature extraction
 
     # fill comments with empty string
     merged_df.loc[:, 'comments'] = merged_df['comments'].bfill()
+
     # remove duplicated
-    df2 = merged_df.drop_duplicates()
+    merged_df = merged_df.drop_duplicates()
+
     # remove empty and too big
     merged_df = merged_df[(merged_df['comments'].str.len() > 100)]
     merged_df = merged_df[(merged_df['comments'].str.len() < 200)]
+
     # remove non string
     merged_df = merged_df[
         merged_df['comments'].apply(lambda x: isinstance(x, str))]

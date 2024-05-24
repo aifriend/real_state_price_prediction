@@ -111,7 +111,7 @@ class TrainService:
                         f"Apply label encoder with label "
                         f"{category_mapping}")
 
-        # drop less significance features
+        # drop less significance features from feature selection with embedding method
         df.drop(
             columns=df.columns[
                 [1, 7, 11, 12, 13, 15, 17, 18, 19, 20,
@@ -392,6 +392,16 @@ class TrainService:
         TrainService.r2(xgb, y_test, y_pred_xgb)
         DataService.save_model(xgb, project_dir, parent=1, apex='price_train')
 
+        # Feature importance
+        # Plot feature importance
+        importance = xgb.feature_importances_
+        # for i, v in enumerate(importance):
+        #     logger.info('feature: %d, score: %.5f' % (i, v))
+        sns.set()
+        plt.bar([x for x in range(len(importance))], importance)
+        plt.title("A barplot showing the significance of each feature from XGBOOST")
+        plt.show()
+
         # Gradient Boosting
         boost = GradientBoostingRegressor(
             n_estimators=300, min_samples_split=20)
@@ -419,7 +429,7 @@ class TrainService:
         #     logger.info('feature: %d, score: %.5f' % (i, v))
         sns.set()
         plt.bar([x for x in range(len(importance))], importance)
-        plt.title("A barplot showing the significance of each feature")
+        plt.title("A barplot showing the significance of each feature from FOREST")
         plt.show()
 
         return xgb, rescaled_x_train
